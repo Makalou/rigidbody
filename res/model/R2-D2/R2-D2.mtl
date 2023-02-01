@@ -1,0 +1,19 @@
+# Blender 3.1.0 Beta MTL File: 'None'
+# www.blender.org
+
+newmtl R2D2
+Ns 225.000000
+Ka 1.000000 1.000000 1.000000
+Kd 0.800000 0.800000 0.800000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Ka  /Users/wangzeyuan/uploads_files_3150593_R2-D2/Textures/R2D2_BaseColor.png
+map_Kd  /Users/wangzeyuan/uploads_files_3150593_R2-D2/Textures/R2D2_BaseColor.png
+map_Pr  /Users/wangzeyuan/uploads_files_3150593_R2-D2/Textures/R2D2_Roughness.png
+map_Pm  /Users/wangzeyuan/uploads_files_3150593_R2-D2/Textures/R2D2_Metallic.png
+map_Ke  /Users/wangzeyuan/uploads_files_3150593_R2-D2/Textures/R2D2_Emissive.png
+norm    /Users/wangzeyuan/uploads_files_3150593_R2-D2/Textures/R2D2_NormalMap.png
+disp    /Users/wangzeyuan/uploads_files_3150593_R2-D2/Textures/R2D2_Height.png

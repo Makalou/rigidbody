@@ -1,0 +1,11 @@
+Model Information:
+* title:	Neon Genesis Evangelion Unit 01
+* source:	https://sketchfab.com/3d-models/neon-genesis-evangelion-unit-01-2e0c150a4d864e838d1bed40b173ff8b
+* author:	lucaspitaperex (https://sketchfab.com/lucaspitaperex)
+
+Model License:
+* license type:	CC-BY-SA-4.0 (http://creativecommons.org/licenses/by-sa/4.0/)
+* requirements:	Author must be credited. Modified versions must have the same license. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Neon Genesis Evangelion Unit 01" (https://sketchfab.com/3d-models/neon-genesis-evangelion-unit-01-2e0c150a4d864e838d1bed40b173ff8b) by lucaspitaperex (https://sketchfab.com/lucaspitaperex) licensed under CC-BY-SA-4.0 (http://creativecommons.org/licenses/by-sa/4.0/)

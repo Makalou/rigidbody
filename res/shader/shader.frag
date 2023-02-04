@@ -9,18 +9,7 @@ layout(location =3) in vec4 light_space_pos;
 
 layout(location=0) out vec4 outColor;
 
-layout(set = 0,binding=1) uniform CamInfo{
-	vec3 pos;
-	vec3 up;
-	vec3 right;
-	vec3 front;
-	vec3 worldUp;
-//camera models
-	mat4 view;
-	mat4 proj;
-}cam;
-
-layout(set =0,binding=2) uniform sampler2D shadowMapSampler;
+#include "built_in.glsl"
 
 layout(set =1,binding=0) uniform sampler2D albedoSampler;
 layout(set =1,binding=1) uniform sampler2D emissiveSampler;

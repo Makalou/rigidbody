@@ -14,7 +14,7 @@
 
 const size_t MAX_FRAME_IN_FLIGHT = 3;
 
-class VulkanContext {
+class VulkanBackend {
 public:
     void init(GLFWwindow *window);
 
@@ -55,7 +55,7 @@ public:
     std::vector<VkFence> inFlightFences;
 };
 
-class MyContext: public VulkanContext{
+class MyBackend: public VulkanBackend{
     void init_resource() override;
 
     void clean_resource() override;
@@ -65,7 +65,7 @@ class MyContext: public VulkanContext{
         auto image_views = vkb_swapchain.get_image_views().value();
         auto extent = vkb_swapchain.extent;
         for (size_t i = 0; i < swapChainImageViewsSize; i++) {
-            renderPass.addFrameBuffers(1,extent,{color, depth,image_views[i]});
+            forwardPass.addFrameBuffers(1, extent, {color, depth, image_views[i]});
         }
     }
 
@@ -73,7 +73,7 @@ class MyContext: public VulkanContext{
         auto swapChainImageViewsSize = vkb_swapchain.image_count;
         auto extent = vkb_swapchain.extent;
         for(size_t i = 0; i < swapChainImageViewsSize; i++){
-            imGuiRenderPass.addFrameBuffers(1,extent,{vkb_swapchain.get_image_views().value()[i]});
+            imGuiPass.addFrameBuffers(1, extent, {vkb_swapchain.get_image_views().value()[i]});
         }
     }
 
@@ -85,9 +85,9 @@ class MyContext: public VulkanContext{
         }
     }
 
-    void createRenderPass();
+    void createForwardPass();
 
-    void createImGuiRenderPass();
+    void createImGuiPass();
 
     void createShadowPass();
 
@@ -104,8 +104,8 @@ class MyContext: public VulkanContext{
     void cleanupSwapChain();
 
     void destroyAllFrameBuffers(){
-        renderPass.destroyAllFrameBuffers();
-        imGuiRenderPass.destroyAllFrameBuffers();
+        forwardPass.destroyAllFrameBuffers();
+        imGuiPass.destroyAllFrameBuffers();
         shadowPass.destroyAllFrameBuffers();
     }
 
@@ -120,8 +120,8 @@ public:
     std::vector<VkCommandBuffer> commandBuffers{};
     std::vector<VkCommandBuffer> gui_commandBuffers{};
 
-    VulkanRenderPass renderPass;
-    VulkanRenderPass imGuiRenderPass;
+    VulkanRenderPass forwardPass;
+    VulkanRenderPass imGuiPass;
     VulkanRenderPass shadowPass;
 
     VkDescriptorSetLayout descriptorSetLayout;

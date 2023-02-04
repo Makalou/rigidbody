@@ -20,6 +20,8 @@ layout(set=1,binding=0) uniform PBR_Uniform{
     vec3 emission;
 }pbr_uniform;
 
+#include "built_in.glsl"
+
 layout(set=1,binding=1) uniform sample2D ambientMap;
 layout(set=1,binding=2) uniform sample2D specularMap;
 layout(set=1,binding=3) uniform sample2D specularHeighightMap;
@@ -32,5 +34,5 @@ layout(set=1,binding=9) uniform sample2D emissiveMap;
 layout(set=1,binding=10) uniform sample2D normalMap;
 
 void main() {
-
+    //do some compute
 }

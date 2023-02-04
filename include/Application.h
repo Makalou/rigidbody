@@ -4,14 +4,15 @@
 #include <GLFW/glfw3.h>
 #include "win_config.h"
 #include "vk_context.h"
+#include <memory>
 
-class VulkanContext;
+class VulkanBackend;
 
 class Application {
 public:
 	void run() {
 		init_window();
-		init_vulkan();
+        init_graphics_backend();
         init_gui();
 		mainloop();
 		cleanup();
@@ -21,7 +22,7 @@ public:
 	}
 private:
 	void init_window();
-	void init_vulkan();
+	void init_graphics_backend();
     void init_gui();
 	void mainloop();
 	void cleanup();
@@ -30,6 +31,6 @@ private:
 	void drawFrame();
 private:
 	GLFWwindow* window;
-	MyContext* my_context;
+	std::unique_ptr<MyBackend> my_backend;
 	bool frameBufferResized=false;
 };

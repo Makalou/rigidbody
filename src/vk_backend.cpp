@@ -4,7 +4,7 @@
 #include <iostream>
 #include "VkBootstrap.h"
 
-void VulkanContext::init(GLFWwindow *window) {
+void VulkanBackend::init(GLFWwindow *window) {
     this->window = window;
     vkb::InstanceBuilder instance_builder;
     auto inst_ret = instance_builder.set_app_name("phy sim")
@@ -33,7 +33,7 @@ void VulkanContext::init(GLFWwindow *window) {
     init_resource();
 }
 
-void VulkanContext::cleanup() {
+void VulkanBackend::cleanup() {
     for (size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) {
         destroyDeviceObject(vkDestroySemaphore, renderFinishedSemaphores[i]);
         destroyDeviceObject(vkDestroySemaphore, imageAvailableSemaphores[i]);
@@ -47,7 +47,7 @@ void VulkanContext::cleanup() {
     destroy_instance(vkb_inst);
 }
 
-void VulkanContext::createSyncObjects() {
+void VulkanBackend::createSyncObjects() {
     imageAvailableSemaphores.resize(MAX_FRAME_IN_FLIGHT);
     renderFinishedSemaphores.resize(MAX_FRAME_IN_FLIGHT);
     inFlightFences.resize(MAX_FRAME_IN_FLIGHT);

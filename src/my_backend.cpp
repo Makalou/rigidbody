@@ -12,7 +12,7 @@
 
 const auto topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 
-void MyContext::init_resource() {
+void MyBackend::init_resource() {
     CommandPoolBuilder commandPoolBuilder{vkb_device};
 
     commandPool = commandPoolBuilder.setQueue(vkb::QueueType::graphics).build().value();
@@ -169,9 +169,9 @@ void MyContext::init_resource() {
         createtextureimgthread.join();
     });
 
-    createRenderPass();
+    createForwardPass();
     createShadowPass();
-    createImGuiRenderPass();
+    createImGuiPass();
 
     DescriptorSetLayoutBuilder descriptorSetLayoutBuilder{vkb_device};
     auto des_set_layout_ret = descriptorSetLayoutBuilder
@@ -230,7 +230,7 @@ void MyContext::init_resource() {
             pipelineBuilder.reset()
                     .setVertexInputState().setInputAssemblyState(topology).setDepthStencilState()
                     .setViewportState(vkb_swapchain.extent).setRasterizationState()
-                    .setMultisampleState(msaaSamples).setColorBlendState().setRenderpass(renderPass);
+                    .setMultisampleState(msaaSamples).setColorBlendState().setRenderpass(forwardPass);
 
             meshRender.buildPipeline(pipelineBuilder,descriptorSetLayout);
             quadRender.buildPipeline(pipelineBuilder,descriptorSetLayout);
@@ -246,7 +246,7 @@ void MyContext::init_resource() {
     recordCommandBuffers();
 }
 
-void MyContext::createDescriptorSets(uint32_t count) {
+void MyBackend::createDescriptorSets(uint32_t count) {
 
     std::vector<VkDescriptorSetLayout> layouts(count, descriptorSetLayout);
 
@@ -257,7 +257,7 @@ void MyContext::createDescriptorSets(uint32_t count) {
     descriptorPool.allocateDescriptorSets(shadowLayouts, shadowDescriptorSets);
 }
 
-void MyContext::updateDescriptorSets(uint32_t count) {
+void MyBackend::updateDescriptorSets(uint32_t count) {
     VkDescriptorBufferInfo uniformBufferInfo = {.offset = 0, .range = VK_WHOLE_SIZE};
     VkDescriptorBufferInfo cameraInfo = {.offset = 0, .range = VK_WHOLE_SIZE};
 
@@ -298,7 +298,7 @@ void MyContext::updateDescriptorSets(uint32_t count) {
     }
 }
 
-void MyContext::createRenderPass() {
+void MyBackend::createForwardPass() {
     VkAttachmentDescription colorAttachment = {
             .format = vkb_swapchain.image_format,
             .samples = msaaSamples,
@@ -350,8 +350,8 @@ void MyContext::createRenderPass() {
             .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
             .colorAttachmentCount = 1,
             .pColorAttachments = &colorAttachmentRef,
-            .pDepthStencilAttachment = &depthAttachmentRef,
             .pResolveAttachments = &colorAttachmentResolveRef,
+            .pDepthStencilAttachment = &depthAttachmentRef,
     };
 
     VkSubpassDependency dependency = {
@@ -363,11 +363,11 @@ void MyContext::createRenderPass() {
             .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
     };
     auto builder = RenderPassBuilder{vkb_device};
-    renderPass = builder.addAttachment(colorAttachment).addAttachment(depthAttachment).addAttachment(colorAttachmentResolve)
+    forwardPass = builder.addAttachment(colorAttachment).addAttachment(depthAttachment).addAttachment(colorAttachmentResolve)
     .addSubpass(subpass).addDenpendency(dependency).build().value();
 }
 
-void MyContext::createShadowPass() {
+void MyBackend::createShadowPass() {
     VkAttachmentDescription attachment = {
             .format = findDepthFormat(vkb_device.physical_device),
             .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -395,7 +395,7 @@ void MyContext::createShadowPass() {
     shadowPass = builder.addAttachment(attachment).addSubpass(subpass).build().value();
 }
 
-void MyContext::createImGuiRenderPass() {
+void MyBackend::createImGuiPass() {
     VkAttachmentDescription attachment ={
             .format = vkb_swapchain.image_format,
             .samples = VK_SAMPLE_COUNT_1_BIT,
@@ -427,10 +427,10 @@ void MyContext::createImGuiRenderPass() {
             .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
     };
     auto builder = RenderPassBuilder{vkb_device};
-    imGuiRenderPass = builder.addAttachment(attachment).addSubpass(subpass).addDenpendency(dependency).build().value();
+    imGuiPass = builder.addAttachment(attachment).addSubpass(subpass).addDenpendency(dependency).build().value();
 }
 
-void MyContext::recordCommandBuffers() {
+void MyBackend::recordCommandBuffers() {
     auto commandBufferCount = commandBuffers.size();
     for (size_t i = 0; i < commandBufferCount; i++) {
         auto commandBuffer = commandBuffers[i];
@@ -452,7 +452,7 @@ void MyContext::recordCommandBuffers() {
     }
 }
 
-void MyContext::recordShadowPass(VkCommandBuffer commandBuffer,uint32_t des_idx) {
+void MyBackend::recordShadowPass(VkCommandBuffer commandBuffer, uint32_t des_idx) {
 
     shadowPass.begin(commandBuffer,VK_SUBPASS_CONTENTS_INLINE,des_idx,{{.depthStencil.depth = 1.0f,.depthStencil.stencil = 0}});
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, shadowPipeline);
@@ -470,26 +470,19 @@ void MyContext::recordShadowPass(VkCommandBuffer commandBuffer,uint32_t des_idx)
     shadowPass.end(commandBuffer);
 }
 
-void MyContext::recordForwardPass(VkCommandBuffer commandBuffer, uint32_t des_idx) {
+void MyBackend::recordForwardPass(VkCommandBuffer commandBuffer, uint32_t des_idx) {
     const float a = 0.7297f;
 
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, meshRender.m_materials[0].m_pipeline.layout,
                             0, 1,&descriptorSets[des_idx], 0, nullptr);
 
-    renderPass.begin(commandBuffer,VK_SUBPASS_CONTENTS_INLINE,des_idx,{{.color = {a, a, a, 1.0f}},{.depthStencil = {1.0f, 0}}});
-
+    forwardPass.begin(commandBuffer, VK_SUBPASS_CONTENTS_INLINE, des_idx, {{.color = {a, a, a, 1.0f}}, {.depthStencil = {1.0f, 0}}});
     meshRender.record_drawCommand(commandBuffer);
     quadRender.record_drawCommand(commandBuffer);
-    /*
-    VkDeviceSize offsets[] = {0};
-    VkBuffer quadVertexBuffers[] = {resourceManager.quadMesh.m_device_obj.m_vertexBuffer};
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, quadVertexBuffers, offsets);
-    vkCmdDraw(commandBuffer,resourceManager.quadMesh.get_vertex_size(),1,0,0);
-     */
-    renderPass.end(commandBuffer);
+    forwardPass.end(commandBuffer);
 }
 
-void MyContext::cleanupSwapChain() {
+void MyBackend::cleanupSwapChain() {
 
     resourceManager.cleanUpColorResources();
     resourceManager.cleanUpDepthResources();
@@ -505,8 +498,8 @@ void MyContext::cleanupSwapChain() {
     }
 
     shadowPipeline.destroy(vkb_device);
-    destroyDeviceObject(vkDestroyRenderPass, renderPass);
-    destroyDeviceObject(vkDestroyRenderPass, imGuiRenderPass);
+    destroyDeviceObject(vkDestroyRenderPass, forwardPass);
+    destroyDeviceObject(vkDestroyRenderPass, imGuiPass);
 
     vkb_swapchain.destroy_image_views(vkb_swapchain.get_image_views().value());
 
@@ -516,7 +509,7 @@ void MyContext::cleanupSwapChain() {
     destroy_swapchain(vkb_swapchain);
 }
 
-void MyContext::recreateSwapChain() {
+void MyBackend::recreateSwapChain() {
 
     int width = 0, height = 0;
     while (width == 0 || height == 0) {
@@ -527,8 +520,8 @@ void MyContext::recreateSwapChain() {
     vkDeviceWaitIdle(vkb_device);
 
     cleanupSwapChain();
-    createRenderPass();
-    createImGuiRenderPass();
+    createForwardPass();
+    createImGuiPass();
 
     resourceManager.createColorResources(vkb_swapchain.image_format, vkb_swapchain.extent.width, vkb_swapchain.extent.height, msaaSamples);
     resourceManager.createDepthResources(vkb_swapchain.extent.width, vkb_swapchain.extent.height, msaaSamples);
@@ -545,7 +538,7 @@ void MyContext::recreateSwapChain() {
     recordCommandBuffers();
 }
 
-void MyContext::clean_resource() {
+void MyBackend::clean_resource() {
     cleanupSwapChain();
     destroyDeviceObject(vkDestroyDescriptorSetLayout, descriptorSetLayout);
     destroyDeviceObject(vkDestroyDescriptorSetLayout,shadowDescriptorSetLayout);

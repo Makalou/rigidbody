@@ -1,5 +1,4 @@
 #include "Application.h"
-#include "vk_context.h"
 #include "camera.h"
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
@@ -7,7 +6,6 @@
 #include "implot.h"
 #include <queue>
 #include "glm/gtc/quaternion.hpp"
-#include "simd/simd.h"
 
 static void frameBufferResizeCallback(GLFWwindow *window, int width, int height) {
     auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
@@ -36,7 +34,6 @@ static void cursorPosCallback(GLFWwindow *window, double x, double y) {
 }
 
 auto currentMouseVisible = GLFW_CURSOR_NORMAL;
-
 
 static void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
     switch (key) {
@@ -99,9 +96,9 @@ void Application::init_window() {
     Camera::registry("camera1", pCamera);
 }
 
-void Application::init_vulkan() {
-    my_context = new MyContext;
-    my_context->init(window);
+void Application::init_graphics_backend(){
+    my_backend = std::make_unique<MyBackend>();
+    my_backend->init(window);
 }
 
 const auto scale = 1.0f;
@@ -125,37 +122,9 @@ bool rota = false;
 
 int collide_count = 0;
 
-bool right_side(const glm::vec3& plane_point,const glm::vec3& plane_normal,const glm::vec3& point){
-    return glm::dot(plane_normal,point-plane_point)<=0;
-}
-
-std::vector<glm::vec3> convex_hull(const std::vector<glm::vec3> points){
-    std::vector<glm::vec3> result;
-    for(int i=0;i<points.size();++i){
-        for(int j =i+1;j<points.size();++j){
-            for(int k = j+1;k<points.size();++k){
-                bool valid = true;
-                auto plane_normal = glm::cross(points[j]-points[i],points[k]-points[i]);
-                for(int p=0;p<points.size();p++){
-                    if(p==i||p==j||p==k)
-                        continue;
-                    valid&=right_side(plane_normal,points[i],points[p]);
-                    if(!valid) break;
-                }
-                if(valid) {
-                    result.push_back(points[i]);
-                    result.push_back(points[j]);
-                    result.push_back(points[k]);
-                }
-            }
-        }
-    }
-    return result;
-}
-
 void Application::mainloop() {
 
-    auto vertex_positions = my_context->mesh->get_position_view();
+    auto vertex_positions = my_backend->mesh->get_position_view();
 
     std::vector<glm::vec3> local_state(vertex_positions.size());
 
@@ -200,7 +169,7 @@ void Application::mainloop() {
         vertex_positions[i]=x+R*local_state[i];
     }
 
-    my_context->mesh->upload_vertex_data_to_device(VulkanDevice{my_context->vkb_device});
+    my_backend->mesh->upload_vertex_data_to_device(VulkanDevice{my_backend->vkb_device});
 
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
@@ -259,12 +228,12 @@ if(center.y-collision_radius<=0){
 
 }
 #endif
-            my_context->mesh->upload_vertex_data_to_device(VulkanDevice{my_context->vkb_device});
+            my_backend->mesh->upload_vertex_data_to_device(VulkanDevice{my_backend->vkb_device});
         }
         updateGUI();
         drawFrame();
     }
-    vkDeviceWaitIdle(my_context->vkb_device);
+    vkDeviceWaitIdle(my_backend->vkb_device);
 }
 
 void Application::cleanup() {
@@ -272,8 +241,7 @@ void Application::cleanup() {
     ImGui_ImplGlfw_Shutdown();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
-    my_context->cleanup();
-    delete my_context;
+    my_backend->cleanup();
     glfwDestroyWindow(window);
     glfwTerminate();
 }
@@ -282,35 +250,35 @@ size_t currentFrame = 0;
 
 void Application::drawFrame() {
 
-    vkWaitForFences(my_context->vkb_device, 1, &my_context->inFlightFences[currentFrame], VK_TRUE,
+    vkWaitForFences(my_backend->vkb_device, 1, &my_backend->inFlightFences[currentFrame], VK_TRUE,
                     std::numeric_limits<uint64_t>::max());
     uint32_t imageIndex;
-    auto aquiresult = vkAcquireNextImageKHR(my_context->vkb_device, my_context->get_swapChain(),
+    auto aquiresult = vkAcquireNextImageKHR(my_backend->vkb_device, my_backend->get_swapChain(),
                                             std::numeric_limits<uint64_t>::max(),
-                                            my_context->imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE,
+                                            my_backend->imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE,
                                             &imageIndex);
 
     if (aquiresult == VK_ERROR_OUT_OF_DATE_KHR || frameBufferResized) {
         setFrameBufferResized(false);
-        my_context->recreateSwapChain();
+        my_backend->recreateSwapChain();
         return;
     } else if (aquiresult != VK_SUCCESS && aquiresult != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
-    auto aspect = my_context->vkb_swapchain.extent.width /(float) my_context->vkb_swapchain.extent.height;
-    my_context->resourceManager.updateUniformBuffer(imageIndex,rota);
-    my_context->resourceManager.updateCameraBuffer(imageIndex);
-    //my_context->resourceManager.updateModelMatrix(imageIndex,aspect,x,q);
-    VkSemaphore waitSemaphores[] = {my_context->imageAvailableSemaphores[currentFrame]};
+    auto aspect = my_backend->vkb_swapchain.extent.width / (float) my_backend->vkb_swapchain.extent.height;
+    my_backend->resourceManager.updateUniformBuffer(imageIndex, rota);
+    my_backend->resourceManager.updateCameraBuffer(imageIndex);
+    //my_backend->resourceManager.updateModelMatrix(imageIndex,aspect,x,q);
+    VkSemaphore waitSemaphores[] = {my_backend->imageAvailableSemaphores[currentFrame]};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-    auto command = my_context->commandBuffers[imageIndex];
-    auto gui_command = my_context->gui_commandBuffers[imageIndex];
+    auto command = my_backend->commandBuffers[imageIndex];
+    auto gui_command = my_backend->gui_commandBuffers[imageIndex];
 
     renderGUI(gui_command, imageIndex);
 
-    VkSemaphore signalSemaphores[] = {my_context->renderFinishedSemaphores[currentFrame]};
+    VkSemaphore signalSemaphores[] = {my_backend->renderFinishedSemaphores[currentFrame]};
 
     VkCommandBuffer commandBuffers[] = {command, gui_command};
 
@@ -328,13 +296,13 @@ void Application::drawFrame() {
     //render queue -> producer
     //present queue -> consumer
     //swapchain -> mailbox
-    vkResetFences(my_context->vkb_device, 1, &my_context->inFlightFences[currentFrame]);
-    if (vkQueueSubmit(my_context->vkb_device.get_queue(vkb::QueueType::graphics).value(), 1, &submitInfo,
-                      my_context->inFlightFences[currentFrame]) != VK_SUCCESS) {
+    vkResetFences(my_backend->vkb_device, 1, &my_backend->inFlightFences[currentFrame]);
+    if (vkQueueSubmit(my_backend->vkb_device.get_queue(vkb::QueueType::graphics).value(), 1, &submitInfo,
+                      my_backend->inFlightFences[currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
-    VkSwapchainKHR swapChains[] = {my_context->get_swapChain()};
+    VkSwapchainKHR swapChains[] = {my_backend->get_swapChain()};
     VkPresentInfoKHR presentInfo = {
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .waitSemaphoreCount = 1,
@@ -344,15 +312,13 @@ void Application::drawFrame() {
             .pImageIndices = &imageIndex
     };
 
-    auto qp_result = vkQueuePresentKHR(my_context->vkb_device.get_queue(vkb::QueueType::present).value(), &presentInfo);
+    auto qp_result = vkQueuePresentKHR(my_backend->vkb_device.get_queue(vkb::QueueType::present).value(), &presentInfo);
     if (qp_result == VK_ERROR_OUT_OF_DATE_KHR || qp_result == VK_SUBOPTIMAL_KHR || frameBufferResized) {
         setFrameBufferResized(false);
-        my_context->recreateSwapChain();
+        my_backend->recreateSwapChain();
     } else if (qp_result != VK_SUCCESS) {
         throw std::runtime_error("failed to present swap chain image!");
     }
-    //vkQueueWaitIdle(my_context->presentQueue);
-
     currentFrame = (currentFrame + 1) % MAX_FRAME_IN_FLIGHT;
 }
 
@@ -364,19 +330,19 @@ void Application::init_gui() {
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForVulkan(window, true);
     ImGui_ImplVulkan_InitInfo init_info = {
-            .Instance = my_context->vkb_inst,//my_context->vk_instance_wrapper.get_vk_instance(),
-            .PhysicalDevice = my_context->vkb_device.physical_device,
-            .Device = my_context->getDevice(),
+            .Instance = my_backend->vkb_inst,//my_backend->vk_instance_wrapper.get_vk_instance(),
+            .PhysicalDevice = my_backend->vkb_device.physical_device,
+            .Device = my_backend->getDevice(),
             //todo .quefamily
-            .Queue = my_context->vkb_device.get_queue(vkb::QueueType::graphics).value(),
+            .Queue = my_backend->vkb_device.get_queue(vkb::QueueType::graphics).value(),
             .PipelineCache = VK_NULL_HANDLE,
-            .DescriptorPool = my_context->imguiDescriptorPool.m_pool,
-            .MinImageCount = static_cast<uint32_t>(my_context->vkb_swapchain.image_count),
-            .ImageCount = static_cast<uint32_t>(my_context->vkb_swapchain.image_count),
+            .DescriptorPool = my_backend->imguiDescriptorPool.m_pool,
+            .MinImageCount = static_cast<uint32_t>(my_backend->vkb_swapchain.image_count),
+            .ImageCount = static_cast<uint32_t>(my_backend->vkb_swapchain.image_count),
             .Allocator = VK_NULL_HANDLE,
             .CheckVkResultFn = nullptr
     };
-    ImGui_ImplVulkan_Init(&init_info, my_context->imGuiRenderPass);
+    ImGui_ImplVulkan_Init(&init_info, my_backend->imGuiPass);
 
     auto command_buffer = VulkanCommandManager::instance().beginSingleTimeCommands();
     ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
@@ -454,10 +420,10 @@ void Application::renderGUI(VkCommandBuffer commandBuffer, uint32_t index) {
 
     VkRenderPassBeginInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    info.renderPass = my_context->imGuiRenderPass;
-    info.framebuffer = my_context->imGuiRenderPass.m_framebuffers[index].m_frame_buffer;
-    info.renderArea.extent.width = my_context->vkb_swapchain.extent.width;
-    info.renderArea.extent.height = my_context->vkb_swapchain.extent.height;
+    info.renderPass = my_backend->imGuiPass;
+    info.framebuffer = my_backend->imGuiPass.m_framebuffers[index].m_frame_buffer;
+    info.renderArea.extent.width = my_backend->vkb_swapchain.extent.width;
+    info.renderArea.extent.height = my_backend->vkb_swapchain.extent.height;
     vkCmdBeginRenderPass(commandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
     vkCmdEndRenderPass(commandBuffer);

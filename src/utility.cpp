@@ -22,7 +22,6 @@ std::vector<char> readFile(const std::string& filename) {
 void loadModel(Mesh& mesh, const std::string path)
 {
 
-
 	tinyobj::attrib_t attrib;//holders all of the positions, normals texture coordinates
 	std::vector<tinyobj::shape_t>shapes;//contains all of the separate objects and their faces
 	std::vector<tinyobj::material_t> materials;//
@@ -34,8 +33,6 @@ void loadModel(Mesh& mesh, const std::string path)
     }else if(!warn.empty()){
         std::cerr<<warn<<"n";
     }
-
-
 
 	std::unordered_map<Vertex, uint32_t>uniqueVertices = {};
 

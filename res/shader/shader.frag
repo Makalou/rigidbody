@@ -2,21 +2,28 @@
 #extension GL_ARB_separate_shader_objects: enable
 #extension GL_GOOGLE_include_directive: enable
 
-layout(location=0) centroid in vec2 TexCoord;
-layout(location=1) in vec3 fragPos;
-layout(location=2) in vec3 fragNormal;
-layout(location =3) in vec4 light_space_pos;
+layout(location = 0) centroid in vec2 TexCoord;
+layout(location = 1) in vec3 fragPos;
+layout(location = 2) in vec3 fragNormal;
+layout(location = 3) in vec4 light_space_pos;
 
-layout(location=0) out vec4 outColor;
+layout(location = 0) out vec4 outColor;
 
-#include "built_in.glsl"
+#include "built-in/built_in.glsl"
 
-layout(set =1,binding=0) uniform sampler2D albedoSampler;
-layout(set =1,binding=1) uniform sampler2D emissiveSampler;
-layout(set =1,binding=2) uniform sampler2D normalSampler;
-layout(set =1,binding=3) uniform sampler2D metalSampler;
-layout(set =1,binding=4) uniform sampler2D roughSampler;
-layout(set =1,binding=5) uniform sampler2D brdfLUT;
+layout(set = CUSTOM_SET_BASE,binding = 0) uniform sampler2D albedoSampler;
+layout(set = CUSTOM_SET_BASE,binding = 1) uniform sampler2D emissiveSampler;
+layout(set = CUSTOM_SET_BASE,binding = 2) uniform sampler2D normalSampler;
+layout(set = CUSTOM_SET_BASE,binding = 3) uniform sampler2D metalSampler;
+layout(set = CUSTOM_SET_BASE,binding = 4) uniform sampler2D roughSampler;
+layout(set = CUSTOM_SET_BASE,binding = 5) uniform sampler2D brdfLUT;
+
+#include "built-in/utility/transform_functions.glsl"
+#include "built-in/utility/rng.glsl"
+#include "built-in/utility/random_sample.glsl"
+#include "built-in/utility/color_space.glsl"
+#include "built-in/shading/pbr.glsl"
+#include "built-in/post-processing/tonemapping.glsl"
 
 vec3 lightColor={4.0,4.0,4.0};
 vec3 lightDir={-1.0,1.0,1.0};
@@ -27,52 +34,6 @@ const float quadratic=0.032;
 
 const float near=0.01;
 const float far=100.0;
-
-mat3 computeTBN(vec3 N,vec3 p,vec2 uv){
-	// get edge vectors of the pixel triangle
-	vec3 dp1 = dFdx( p );
-	vec3 dp2 = dFdy( p );
-	vec2 duv1 = dFdx( uv );
-	vec2 duv2 = dFdy( uv );
-
-	// solve the linear system
-	vec3 dp2perp = cross( dp2, N );
-	vec3 dp1perp = cross( N, dp1 );
-	vec3 T = normalize( dp2perp * duv1.x + dp1perp * duv2.x );  // Tangent vector
-	vec3 B = normalize( dp2perp * duv1.y + dp1perp * duv2.y );  // Binormal vector
-	return mat3(T,B,N);
-}
-
-#include "PBRUtils.glsl"
-
-float linearize_depth(float d)
-{
-	return near * far / (far + d * (near - far));
-}
-
-uint baseHash( uvec2 p ) {
-	p = 1103515245U*((p >> 1U)^(p.yx));
-	uint h32 = 1103515245U*((p.x)^(p.y>>3U));
-	return h32^(h32 >> 16);
-}
-
-float hash1( inout float seed ) {
-	uint n = baseHash(floatBitsToUint(vec2(seed+=.1,seed+=.1)));
-	return float(n)/float(0xffffffffU);
-}
-
-float cuberoot( float x ) { return sign(x)*pow(abs(x),1.0/3.0); }
-
-vec3 sample_inside_hemisphere(in vec3 p, in vec3 normal , in float seed){
-	float t = hash1(seed);
-	float cosPhi = t;
-	float sinPhi = sqrt(1.0 - cosPhi * cosPhi);
-	float u = hash1(t);
-	float theta = u*2.0*PI;
-	vec3 dir = vec3(cos(theta)*sinPhi,cosPhi,sin(theta)*sinPhi);
-	float r = cuberoot(hash1(u));
-	return p + .2*r* dir;
-}
 
 const vec3 caches[8] = {vec3(0,0,0),vec3(1,0,0),vec3(0,1,0),
 						vec3(0,0,1),vec3(1,1,0),vec3(1,0,1),
@@ -176,7 +137,7 @@ void main()
 		*/
 	vec4 som = cam.proj * cam.view * vec4(fragPos,1.0);
 	vec3 ndc = (som.xyz/som.w)*0.5+vec3(0.5);
-	int level = int(floor(7.0*linearize_depth(ndc.z)));
+	int level = int(floor(7.0*linearize_depth(near,far,ndc.z)));
 	const int map_len = int(pow(2,level));
 	int map_size = map_len*map_len;
 	ivec2 hh = ivec2(floor(map_len*ndc.xy));

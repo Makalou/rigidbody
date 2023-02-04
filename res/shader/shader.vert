@@ -13,19 +13,6 @@ layout(location=3) out vec4 light_sapce_pos;
 
 #include "built_in.glsl"
 
-layout(set = 0,binding = 1) uniform CamInfo{
-	vec3 pos;
-	vec3 up;
-	vec3 right;
-	vec3 front;
-	vec3 worldUp;
-//camera models
-	mat4 view;
-	mat4 proj;
-//euler Angles
-	//float Yaw;float Pitch;
-}cam;
-
 void main(){
 	vec4 world_pos = built_in.model*vec4(inPosition,1.0f);
 	light_sapce_pos = built_in.light_sapce_matrix*world_pos;

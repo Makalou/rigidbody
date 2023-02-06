@@ -5,14 +5,18 @@
 #include <memory>
 #include "system/window_system.h"
 #include "system/physics_system.h"
+#include "scene_graph.h"
+#include <thread>
 
 class VulkanBackend;
 
 class Application {
 public:
 	void run() {
+        auto t1 = std::thread([this]{init_scene();});
 		init_window();
         init_GPU_backend();
+        t1.join();
         init_physics_system();
         init_gui();
 		mainloop();
@@ -21,7 +25,9 @@ public:
 	void setFrameBufferResized(bool flag) {
 		frameBufferResized = flag;
 	}
+
 private:
+    void init_scene();
 	void init_window();
 	void init_GPU_backend();
     void init_gui();
@@ -31,8 +37,8 @@ private:
     void updateGUI();
     void renderGUI(VkCommandBuffer commandBuffer,uint32_t index);
 	void drawFrame();
-private:
-	//GLFWwindow* window;
+
+	std::unique_ptr<scene::SceneGraph> scene;
     std::unique_ptr<subsystem::WindowSystem> window_system;
 	std::unique_ptr<MyBackend> gpu_backend;
     std::unique_ptr<subsystem::PhysicsSystem> physics_system;

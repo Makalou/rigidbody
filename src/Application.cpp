@@ -19,21 +19,10 @@ void Application::init_GPU_backend(){
     gpu_backend = std::make_unique<MyBackend>();
     gpu_backend->init(window_system->get_window());
 }
-
-const auto scale = 1.0f;
-
-glm::vec3 x = {0.f,5.f,0.f};
-glm::qua<float> q{glm::radians(glm::vec3 (0.f,0.f,0.f))};
 glm::vec3 P = {};
 glm::vec3 L = {0,0,0};
 
-const glm::vec3 g = {0.f, -9.8f, 0.f};
-const float damping = 0.994f;
-
 std::vector<float> v_y;
-std::vector<float> energy;
-
-size_t vex_num;
 
 bool physics_sim_paused = true;
 bool collide = false;
@@ -245,15 +234,42 @@ void Application::renderGUI(VkCommandBuffer commandBuffer, uint32_t index) {
         throw std::runtime_error("failed to begin recording command buffer!");
     }
 
-    VkRenderPassBeginInfo info = {};
-    info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    info.renderPass = gpu_backend->imGuiPass;
-    info.framebuffer = gpu_backend->imGuiPass.m_framebuffers[index].m_frame_buffer;
-    info.renderArea.extent.width = gpu_backend->vkb_swapchain.extent.width;
-    info.renderArea.extent.height = gpu_backend->vkb_swapchain.extent.height;
+    VkRenderPassBeginInfo info = {
+            .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+            .renderPass = gpu_backend->imGuiPass,
+            .framebuffer = gpu_backend->imGuiPass.m_framebuffers[index].m_frame_buffer,
+            .renderArea.extent.width = gpu_backend->vkb_swapchain.extent.width,
+            .renderArea.extent.height = gpu_backend->vkb_swapchain.extent.height
+    };
+
     vkCmdBeginRenderPass(commandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
     vkCmdEndRenderPass(commandBuffer);
     vkEndCommandBuffer(commandBuffer);
+}
+
+void Application::init_scene() {
+    scene = std::make_unique<scene::SceneGraph>();
+
+    auto floor = scene->addNodeToRoot("floor");
+    floor->addComponent(std::make_unique<scene::MeshRenderer>());
+    auto main_light = scene->addNodeToRoot("mainLight");
+    main_light->addComponent(std::make_unique<scene::Light>());
+    auto cam = scene->addNodeToRoot("mainCamera");
+    cam->addComponent(std::make_unique<scene::Viewer>());
+
+    auto R2D2 = floor->addChild("R2-D2");
+    auto dragon0 = floor->addChild("dragon0");
+    auto dragon1 = floor->addChild("dragon1");
+    auto dragon2 = floor->addChild("dragon2");
+    auto dragon3 = floor->addChild("dragon3");
+    auto bunny = floor->addChild("bunny");
+
+    R2D2->addComponent(std::make_unique<scene::MeshRenderer>());
+    dragon0->addComponent(std::make_unique<scene::MeshRenderer>());
+    dragon1->addComponent(std::make_unique<scene::MeshRenderer>());
+    dragon2->addComponent(std::make_unique<scene::MeshRenderer>());
+    dragon3->addComponent(std::make_unique<scene::MeshRenderer>());
+    bunny->addComponent(std::make_unique<scene::MeshRenderer>());
 }
 

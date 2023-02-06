@@ -2,21 +2,23 @@
 #extension GL_ARB_separate_shader_objects: enable
 #extension GL_GOOGLE_include_directive: enable
 
-layout(location = 0) centroid in vec2 TexCoord;
-layout(location = 1) in vec3 fragPos;
-layout(location = 2) in vec3 fragNormal;
-layout(location = 3) in vec4 light_space_pos;
+#include "built-in/io.glsl"
 
-layout(location = 0) out vec4 outColor;
+Input(0,centroid,vec2,TexCoord);
+Input(1,smooth,vec3,fragPos);
+Input(2,smooth,vec3,fragNormal);
+Input(3,smooth,vec4,light_space_pos);
+
+RenderTarget(0,vec4,outColor);
 
 #include "built-in/built_in.glsl"
 
-layout(set = CUSTOM_SET_BASE,binding = 0) uniform sampler2D albedoSampler;
-layout(set = CUSTOM_SET_BASE,binding = 1) uniform sampler2D emissiveSampler;
-layout(set = CUSTOM_SET_BASE,binding = 2) uniform sampler2D normalSampler;
-layout(set = CUSTOM_SET_BASE,binding = 3) uniform sampler2D metalSampler;
-layout(set = CUSTOM_SET_BASE,binding = 4) uniform sampler2D roughSampler;
-layout(set = CUSTOM_SET_BASE,binding = 5) uniform sampler2D brdfLUT;
+CUSTOM_USampler2D(0, albedoSampler);
+CUSTOM_USampler2D(1, emissiveSampler);
+CUSTOM_USampler2D(2, normalSampler);
+CUSTOM_USampler2D(3, metalSampler);
+CUSTOM_USampler2D(4, roughSampler);
+CUSTOM_USampler2D(5, brdfLUT);
 
 #include "built-in/utility/transform_functions.glsl"
 #include "built-in/utility/rng.glsl"
@@ -35,14 +37,8 @@ const float quadratic=0.032;
 const float near=0.01;
 const float far=100.0;
 
-const vec3 caches[8] = {vec3(0,0,0),vec3(1,0,0),vec3(0,1,0),
-						vec3(0,0,1),vec3(1,1,0),vec3(1,0,1),
-						vec3(0,1,1),vec3(1,1,1)};
-
 void main()
 {
-
-	float shadow = 0;
 
 	vec3 norm=normalize(fragNormal);
 	mat3 TBN = computeTBN(norm,fragPos,TexCoord);
@@ -54,6 +50,7 @@ void main()
 
 	vec2 shadow_map_coord = light_space_ndc.xy * 0.5 + 0.5;
 
+	float shadow = 0;
 	vec2 texelSize = 1.0 / textureSize(shadowMapSampler, 0);
 	for(int x = -1; x <= 1; ++x)
 	{
@@ -124,30 +121,6 @@ void main()
 	color = sigmod(color);
 	//gama correct
 	gama_correct(color);
-
-	float mml = textureQueryLod(albedoSampler, TexCoord).x;
-	/*
-	if(specular.x < 0.001)
-		if(length(fract(pow(2,-mml)*100*TexCoord)-vec2(0.5))<=0.1)
-			color = vec3(1.0,0.0,0.0);
-		else
-			color = vec3(0.0,0.0,0.0);
-	else
-		color = vec3(1.0,0.0,0.0);
-		*/
-	vec4 som = cam.proj * cam.view * vec4(fragPos,1.0);
-	vec3 ndc = (som.xyz/som.w)*0.5+vec3(0.5);
-	int level = int(floor(7.0*linearize_depth(near,far,ndc.z)));
-	const int map_len = int(pow(2,level));
-	int map_size = map_len*map_len;
-	ivec2 hh = ivec2(floor(map_len*ndc.xy));
-	int index = int(fma(map_len-1,hh.x,hh.y));
-	//ivec3 hh = ivec3(floor(map_len*(ndc)));
-	//ivec3 nh = ivec3(sign(fragNormal)+vec3(1.0));
-	//int normal_idx = int(fma(2,fma(2,nh.x,nh.y),nh.z));
-	//int index = int(fma(map_len-1,fma(map_len-1,hh.x,hh.y),hh.z)+26*normal_idx);
-	//map_size*=27;
-	//color = caches[(index)%8];//vec3(float(index)/float(map_size));
 	outColor=vec4(color,1.0);
 }
 

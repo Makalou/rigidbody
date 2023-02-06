@@ -11,7 +11,7 @@ layout(location=1) out vec3 fragPos;
 layout(location=2) out vec3 fragNormal;
 layout(location=3) out vec4 light_sapce_pos;
 
-#include "built_in.glsl"
+#include "built-in/built_in.glsl"
 
 void main(){
 	vec4 world_pos = built_in.model*vec4(inPosition,1.0f);

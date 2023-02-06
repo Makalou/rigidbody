@@ -7,98 +7,17 @@
 #include <queue>
 #include "glm/gtc/quaternion.hpp"
 
-static void frameBufferResizeCallback(GLFWwindow *window, int width, int height) {
-    auto app = reinterpret_cast<Application *>(glfwGetWindowUserPointer(window));
-    app->setFrameBufferResized(true);
-    std::cout<<"window resize: ["<<width<<","<<height<<"]\n";
-}
-
-static Camera *pCamera = new Camera();
-
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-static void cursorPosCallback(GLFWwindow *window, double x, double y) {
-    static double old_x = -1;
-    static double old_y = -1;
-    if (old_x == -1 || old_y == -1) {
-        old_x = x;
-        old_y = y;
-        return;
-    }
-    auto x_offset = x - old_x;
-    old_x = x;
-    auto y_offset = old_y - y;
-    old_y = y;
-    pCamera->deflect(x_offset, y_offset);
-}
-
-auto currentMouseVisible = GLFW_CURSOR_NORMAL;
-
-static void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
-    switch (key) {
-        case GLFW_KEY_ESCAPE:
-            glfwSetWindowShouldClose(window, GL_TRUE);
-            break;
-        case GLFW_KEY_W:
-            pCamera->transfrom(CameraMovement::FORWARD, deltaTime);
-            break;
-        case GLFW_KEY_S:
-            pCamera->transfrom(CameraMovement::BACKWARD, deltaTime);
-            break;
-        case GLFW_KEY_A:
-            pCamera->transfrom(CameraMovement::LEFT, deltaTime);
-            break;
-        case GLFW_KEY_D:
-            pCamera->transfrom(CameraMovement::RIGHT, deltaTime);
-            break;
-        case GLFW_KEY_H:
-            if(action == GLFW_PRESS){
-                if (currentMouseVisible == GLFW_CURSOR_NORMAL) {
-                    currentMouseVisible = GLFW_CURSOR_DISABLED;
-                    glfwSetCursorPosCallback(window, cursorPosCallback);
-                } else {
-                    currentMouseVisible = GLFW_CURSOR_NORMAL;
-                    glfwSetCursorPosCallback(window, nullptr);
-                }
-                glfwSetInputMode(window, GLFW_CURSOR, currentMouseVisible);
-            }
-            break;
-
-        default:
-            break;
-    }
-}
-
-static void scrollCallback(GLFWwindow *window, double x_offset, double y_offset) {
-    pCamera->zoom(y_offset);
-}
-
-static void mouseButtonCallback(GLFWwindow *window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-
-    }
-}
-
 void Application::init_window() {
-    if (glfwInit() == GLFW_FALSE) {
-        throw std::runtime_error("glfwinit failed!");
-    }
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-    window = glfwCreateWindow(WIN_WIDTH, WIN_HIGHT, WIN_NAME, nullptr, nullptr);
-    glfwSetWindowUserPointer(window, this);
-    glfwSetFramebufferSizeCallback(window, frameBufferResizeCallback);
-    glfwSetKeyCallback(window, keyCallback);
-    glfwSetScrollCallback(window, scrollCallback);
-    glfwSetMouseButtonCallback(window, mouseButtonCallback);
-    glfwSetCursorPosCallback(window, cursorPosCallback);
-    Camera::registry("camera1", pCamera);
+    window_system = std::make_unique<subsystem::WindowSystem>();
+    window_system->init();
 }
 
-void Application::init_graphics_backend(){
-    my_backend = std::make_unique<MyBackend>();
-    my_backend->init(window);
+void Application::init_GPU_backend(){
+    gpu_backend = std::make_unique<MyBackend>();
+    gpu_backend->init(window_system->get_window());
 }
 
 const auto scale = 1.0f;
@@ -116,124 +35,26 @@ std::vector<float> energy;
 
 size_t vex_num;
 
-bool paused = true;
+bool physics_sim_paused = true;
 bool collide = false;
 bool rota = false;
 
 int collide_count = 0;
 
 void Application::mainloop() {
-
-    auto vertex_positions = my_backend->mesh->get_position_view();
-
-    std::vector<glm::vec3> local_state(vertex_positions.size());
-
-    const float mass = 10.0f;
-    const float per_vert_mass = mass/local_state.size();
-    const auto gravity = mass*g;
-
-    for(size_t i =0;i<local_state.size();++i)
-        local_state[i] = *vertex_positions[i];
-
-    glm::vec3 center{};
-    for (auto & p: local_state) {
-        center+=p;
-    }
-
-    center/=local_state.size();
-
-    float collision_radius = 0;
-    for (auto & pos: local_state) {
-        pos-=center;
-        collision_radius = fmax(collision_radius,glm::length(pos));
-        //pos*=0.2;
-    }
-
-    //convex_hull(local_state);
-
-    float w11 = 0,w12=0,w13=0,w22=0,w23=0,w33=0;
-
-    for (auto & pos: local_state) {
-        w11 += (pos.y*pos.y+pos.z*pos.z)*per_vert_mass;
-        w12 -= pos.x*pos.y*per_vert_mass;
-        w13 -= pos.x*pos.z*per_vert_mass;
-        w22 += (pos.x*pos.x+pos.z*pos.z)*per_vert_mass;
-        w23 -= pos.y*pos.z*per_vert_mass;
-        w33 += (pos.x*pos.x+pos.y*pos.y)*per_vert_mass;
-    }
-
-    const glm::mat3 I0_inv = glm::inverse(glm::mat3{w11,w12,w13,w12,w22,w23,w13,w23,w33});
-
-    auto R = glm::mat3_cast(q);
-    for(size_t i =0;i<vertex_positions.size();++i){
-        vertex_positions[i]=x+R*local_state[i];
-    }
-
-    my_backend->mesh->upload_vertex_data_to_device(VulkanDevice{my_backend->vkb_device});
-
-    while (!glfwWindowShouldClose(window)) {
+    while (!window_system->window_should_close()) {
         glfwPollEvents();
         auto currentFrame = (float) glfwGetTime();
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
-        if(!paused) {
-                auto dx = P / mass;
-                R = glm::mat3_cast(q);
-                auto I_inv = R * I0_inv * glm::transpose(R);
-                glm::vec3 w = I_inv * L;
-                //glm::mat3 w_star = {0,w.z,-w.y,-w.z,0,w.x,w.y,-w.x,0};
-                //std::cout<<"["<<w.x<<","<<w.y<<","<<w.z<<"]";
-                //std::cout<<glm::determinant(glm::mat3_cast(q))<<"\n";
-                auto wq = glm::qua(0.f,w);
-                auto dq = 0.5f*wq*q;
-                //std::cout<<"dq : "<<"["<<dq.w<<","<<dq.x<<","<<dq.y<<","<<dq.z<<"]\n";
-                //std::cout<<"q : "<<"["<<q.w<<","<<q.x<<","<<q.y<<","<<q.z<<"]\n";
-                x += dx*deltaTime;
-                q += dq*deltaTime;
-                q = glm::normalize(q);
-                R = glm::mat3_cast(q);
-                P += gravity * deltaTime;
-                P *= damping;L *= damping;
-                for (size_t i = 0; i < vertex_positions.size(); ++i) {
-                    vertex_positions[i] = x + R * local_state[i];
-                }
-#define ENABLE_COLLISION
-#ifdef ENABLE_COLLISION
-if(center.y-collision_radius<=0){
-                glm::vec3 deltaP{};
-                glm::vec3 deltaL{};
-                collide_count = 0;
-                for (size_t i = 0; i < vertex_positions.size(); ++i) {
-                    auto p = vertex_positions[i];
-                    if (p->y < 0.00f&&p->x<=2.0f&&p->x>=-2.0f&&p->z<=2.0f&&p->z>=-2.0f) {
-                        auto r = R*local_state[i];
-                        float v_normal = (P / mass + glm::cross(w, r)).y;
-                        if (v_normal<=0) {
-                            //std::cout<<v_normal<<"\n";
-                            float j1 = -(1.f + 0.3f) * v_normal;
-                            float j2 = 1 / mass + (I_inv * glm::cross(glm::cross(r, {0.f, 1.0f, 0.f}), r)).y;
-                            float j = j1 / j2;
-                            auto J = glm::vec3{0, j, 0};
-                            deltaP += J;
-                            deltaL += glm::cross(r, J);
-                            collide_count++;
-                        }
-                    }
-                }
-                if(collide_count>0) {
-                    deltaP/=collide_count;deltaL/=collide_count;
-                    //std::cout<<collide_count<<"\n";
-                }
-                P += deltaP;L += deltaL;
-
-}
-#endif
-            my_backend->mesh->upload_vertex_data_to_device(VulkanDevice{my_backend->vkb_device});
+        if(!physics_sim_paused) {
+            physics_system->update(deltaTime);
+            gpu_backend->mesh->upload_vertex_data_to_device(VulkanDevice{gpu_backend->vkb_device});
         }
         updateGUI();
         drawFrame();
     }
-    vkDeviceWaitIdle(my_backend->vkb_device);
+    vkDeviceWaitIdle(gpu_backend->vkb_device);
 }
 
 void Application::cleanup() {
@@ -241,8 +62,8 @@ void Application::cleanup() {
     ImGui_ImplGlfw_Shutdown();
     ImPlot::DestroyContext();
     ImGui::DestroyContext();
-    my_backend->cleanup();
-    glfwDestroyWindow(window);
+    gpu_backend->cleanup();
+    window_system->cleanup();
     glfwTerminate();
 }
 
@@ -250,35 +71,35 @@ size_t currentFrame = 0;
 
 void Application::drawFrame() {
 
-    vkWaitForFences(my_backend->vkb_device, 1, &my_backend->inFlightFences[currentFrame], VK_TRUE,
+    vkWaitForFences(gpu_backend->vkb_device, 1, &gpu_backend->inFlightFences[currentFrame], VK_TRUE,
                     std::numeric_limits<uint64_t>::max());
     uint32_t imageIndex;
-    auto aquiresult = vkAcquireNextImageKHR(my_backend->vkb_device, my_backend->get_swapChain(),
+    auto aquiresult = vkAcquireNextImageKHR(gpu_backend->vkb_device, gpu_backend->get_swapChain(),
                                             std::numeric_limits<uint64_t>::max(),
-                                            my_backend->imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE,
+                                            gpu_backend->imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE,
                                             &imageIndex);
 
     if (aquiresult == VK_ERROR_OUT_OF_DATE_KHR || frameBufferResized) {
         setFrameBufferResized(false);
-        my_backend->recreateSwapChain();
+        gpu_backend->recreateSwapChain();
         return;
     } else if (aquiresult != VK_SUCCESS && aquiresult != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("failed to acquire swap chain image!");
     }
 
-    auto aspect = my_backend->vkb_swapchain.extent.width / (float) my_backend->vkb_swapchain.extent.height;
-    my_backend->resourceManager.updateUniformBuffer(imageIndex, rota);
-    my_backend->resourceManager.updateCameraBuffer(imageIndex);
-    //my_backend->resourceManager.updateModelMatrix(imageIndex,aspect,x,q);
-    VkSemaphore waitSemaphores[] = {my_backend->imageAvailableSemaphores[currentFrame]};
+    auto aspect = gpu_backend->vkb_swapchain.extent.width / (float) gpu_backend->vkb_swapchain.extent.height;
+    gpu_backend->resourceManager.updateUniformBuffer(imageIndex, rota);
+    gpu_backend->resourceManager.updateCameraBuffer(imageIndex);
+    //gpu_backend->resourceManager.updateModelMatrix(imageIndex,aspect,x,q);
+    VkSemaphore waitSemaphores[] = {gpu_backend->imageAvailableSemaphores[currentFrame]};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
 
-    auto command = my_backend->commandBuffers[imageIndex];
-    auto gui_command = my_backend->gui_commandBuffers[imageIndex];
+    auto command = gpu_backend->commandBuffers[imageIndex];
+    auto gui_command = gpu_backend->gui_commandBuffers[imageIndex];
 
     renderGUI(gui_command, imageIndex);
 
-    VkSemaphore signalSemaphores[] = {my_backend->renderFinishedSemaphores[currentFrame]};
+    VkSemaphore signalSemaphores[] = {gpu_backend->renderFinishedSemaphores[currentFrame]};
 
     VkCommandBuffer commandBuffers[] = {command, gui_command};
 
@@ -296,13 +117,13 @@ void Application::drawFrame() {
     //render queue -> producer
     //present queue -> consumer
     //swapchain -> mailbox
-    vkResetFences(my_backend->vkb_device, 1, &my_backend->inFlightFences[currentFrame]);
-    if (vkQueueSubmit(my_backend->vkb_device.get_queue(vkb::QueueType::graphics).value(), 1, &submitInfo,
-                      my_backend->inFlightFences[currentFrame]) != VK_SUCCESS) {
+    vkResetFences(gpu_backend->vkb_device, 1, &gpu_backend->inFlightFences[currentFrame]);
+    if (vkQueueSubmit(gpu_backend->vkb_device.get_queue(vkb::QueueType::graphics).value(), 1, &submitInfo,
+                      gpu_backend->inFlightFences[currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
-    VkSwapchainKHR swapChains[] = {my_backend->get_swapChain()};
+    VkSwapchainKHR swapChains[] = {gpu_backend->get_swapChain()};
     VkPresentInfoKHR presentInfo = {
             .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             .waitSemaphoreCount = 1,
@@ -312,10 +133,10 @@ void Application::drawFrame() {
             .pImageIndices = &imageIndex
     };
 
-    auto qp_result = vkQueuePresentKHR(my_backend->vkb_device.get_queue(vkb::QueueType::present).value(), &presentInfo);
+    auto qp_result = vkQueuePresentKHR(gpu_backend->vkb_device.get_queue(vkb::QueueType::present).value(), &presentInfo);
     if (qp_result == VK_ERROR_OUT_OF_DATE_KHR || qp_result == VK_SUBOPTIMAL_KHR || frameBufferResized) {
         setFrameBufferResized(false);
-        my_backend->recreateSwapChain();
+        gpu_backend->recreateSwapChain();
     } else if (qp_result != VK_SUCCESS) {
         throw std::runtime_error("failed to present swap chain image!");
     }
@@ -328,21 +149,21 @@ void Application::init_gui() {
     ImPlot::CreateContext();
 
     ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForVulkan(window, true);
+    ImGui_ImplGlfw_InitForVulkan(window_system->get_window(), true);
     ImGui_ImplVulkan_InitInfo init_info = {
-            .Instance = my_backend->vkb_inst,//my_backend->vk_instance_wrapper.get_vk_instance(),
-            .PhysicalDevice = my_backend->vkb_device.physical_device,
-            .Device = my_backend->getDevice(),
+            .Instance = gpu_backend->vkb_inst,//gpu_backend->vk_instance_wrapper.get_vk_instance(),
+            .PhysicalDevice = gpu_backend->vkb_device.physical_device,
+            .Device = gpu_backend->getDevice(),
             //todo .quefamily
-            .Queue = my_backend->vkb_device.get_queue(vkb::QueueType::graphics).value(),
+            .Queue = gpu_backend->vkb_device.get_queue(vkb::QueueType::graphics).value(),
             .PipelineCache = VK_NULL_HANDLE,
-            .DescriptorPool = my_backend->imguiDescriptorPool.m_pool,
-            .MinImageCount = static_cast<uint32_t>(my_backend->vkb_swapchain.image_count),
-            .ImageCount = static_cast<uint32_t>(my_backend->vkb_swapchain.image_count),
+            .DescriptorPool = gpu_backend->imguiDescriptorPool.m_pool,
+            .MinImageCount = static_cast<uint32_t>(gpu_backend->vkb_swapchain.image_count),
+            .ImageCount = static_cast<uint32_t>(gpu_backend->vkb_swapchain.image_count),
             .Allocator = VK_NULL_HANDLE,
             .CheckVkResultFn = nullptr
     };
-    ImGui_ImplVulkan_Init(&init_info, my_backend->imGuiPass);
+    ImGui_ImplVulkan_Init(&init_info, gpu_backend->imGuiPass);
 
     auto command_buffer = VulkanCommandManager::instance().beginSingleTimeCommands();
     ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
@@ -362,7 +183,7 @@ void Application::updateGUI() {
 
         ImGui::Checkbox("View rotation",&rota);
 
-        ImGui::Checkbox("Simulation Paused",&paused);
+        ImGui::Checkbox("Simulation Paused",&physics_sim_paused);
 
         ImGui::Text("momentum: [%.3f,%.3f,%.3f]",P.x,P.y,P.z);
         ImGui::Text("angler momentum: [%.3f,%.3f,%.3f]",L.x,L.y,L.z);
@@ -408,6 +229,12 @@ void Application::updateGUI() {
     ImGui::Render();
 }
 
+void Application::init_physics_system() {
+    physics_system = std::make_unique<subsystem::PhysicsSystem>();
+    physics_system->init(gpu_backend->mesh);
+    gpu_backend->mesh->upload_vertex_data_to_device(VulkanDevice{gpu_backend->vkb_device});
+}
+
 void Application::renderGUI(VkCommandBuffer commandBuffer, uint32_t index) {
     VkCommandBufferBeginInfo beginInfo = {
             .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -420,12 +247,13 @@ void Application::renderGUI(VkCommandBuffer commandBuffer, uint32_t index) {
 
     VkRenderPassBeginInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    info.renderPass = my_backend->imGuiPass;
-    info.framebuffer = my_backend->imGuiPass.m_framebuffers[index].m_frame_buffer;
-    info.renderArea.extent.width = my_backend->vkb_swapchain.extent.width;
-    info.renderArea.extent.height = my_backend->vkb_swapchain.extent.height;
+    info.renderPass = gpu_backend->imGuiPass;
+    info.framebuffer = gpu_backend->imGuiPass.m_framebuffers[index].m_frame_buffer;
+    info.renderArea.extent.width = gpu_backend->vkb_swapchain.extent.width;
+    info.renderArea.extent.height = gpu_backend->vkb_swapchain.extent.height;
     vkCmdBeginRenderPass(commandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
     vkCmdEndRenderPass(commandBuffer);
     vkEndCommandBuffer(commandBuffer);
 }
+

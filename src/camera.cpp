@@ -41,7 +41,7 @@ void Camera::deflect(float xoffset, float yoffset, bool constrainPitch)
 void Camera::zoom(float offset)
 {
 	m_zoom -= (float)offset;
-	//boudary constrain
+	//boundary constrain
 	m_zoom = std::min(ZOOM, std::max(m_zoom, 1.0f));
 }
 

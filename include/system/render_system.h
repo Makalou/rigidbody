@@ -7,7 +7,10 @@
 
 namespace subsystem{
     class RenderSystem{
+    public:
+        void init(){
 
+        }
     };
 }
 #endif //RIGIDBODY_RENDER_SYSTEM_H

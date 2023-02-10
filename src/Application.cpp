@@ -7,7 +7,6 @@
 #include <queue>
 #include "glm/gtc/quaternion.hpp"
 
-float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 void Application::init_window() {
@@ -34,7 +33,7 @@ void Application::mainloop() {
     while (!window_system->window_should_close()) {
         glfwPollEvents();
         auto currentFrame = (float) glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
+        float deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         if(!physics_sim_paused) {
             physics_system->update(deltaTime);
@@ -78,7 +77,7 @@ void Application::drawFrame() {
 
     auto aspect = gpu_backend->vkb_swapchain.extent.width / (float) gpu_backend->vkb_swapchain.extent.height;
     gpu_backend->resourceManager.updateUniformBuffer(imageIndex, rota);
-    gpu_backend->resourceManager.updateCameraBuffer(imageIndex);
+    gpu_backend->resourceManager.updateCameraBuffer(imageIndex);//todo should move to other place
     //gpu_backend->resourceManager.updateModelMatrix(imageIndex,aspect,x,q);
     VkSemaphore waitSemaphores[] = {gpu_backend->imageAvailableSemaphores[currentFrame]};
     VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
@@ -271,5 +270,10 @@ void Application::init_scene() {
     dragon2->addComponent(std::make_unique<scene::MeshRenderer>());
     dragon3->addComponent(std::make_unique<scene::MeshRenderer>());
     bunny->addComponent(std::make_unique<scene::MeshRenderer>());
+}
+
+void Application::init_renderer() {
+    render_system = std::make_unique<subsystem::RenderSystem>();
+    render_system->init();
 }
 

@@ -147,8 +147,8 @@ void MyBackend::init_resource() {
         quadMat.m_shader.vert = "../res/shader/vert.spv";
         quadMat.m_shader.frag = "../res/material/single_color/frag.spv";
 
-        meshRender.addMaterial(mat);
-        quadRender.addMaterial(quadMat);
+        meshRender.setMaterial(mat);
+        quadRender.setMaterial(quadMat);
 
         std::thread createtextureimgthread([&]{
             meshRender.prepareMaterialResource();
@@ -473,7 +473,8 @@ void MyBackend::recordShadowPass(VkCommandBuffer commandBuffer, uint32_t des_idx
 void MyBackend::recordForwardPass(VkCommandBuffer commandBuffer, uint32_t des_idx) {
     const float a = 0.7297f;
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, meshRender.m_materials[0].m_pipeline.layout,
+    //bind global descriptor
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, meshRender.m_material.m_pipeline.layout,
                             0, 1,&descriptorSets[des_idx], 0, nullptr);
 
     forwardPass.begin(commandBuffer, VK_SUBPASS_CONTENTS_INLINE, des_idx, {{.color = {a, a, a, 1.0f}}, {.depthStencil = {1.0f, 0}}});

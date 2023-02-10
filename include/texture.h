@@ -10,6 +10,7 @@
 #include "vulkan/vulkan.hpp"
 #include "VkBootstrap.h"
 #include "vk_device.h"
+#include <cmath>
 //template<TexureDim dim>
 class Texture{
 public:

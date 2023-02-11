@@ -50,9 +50,9 @@ public:
     VkSurfaceKHR surface;
     vkb::Swapchain vkb_swapchain;
 
-    std::vector<VkSemaphore> imageAvailableSemaphores;
-    std::vector<VkSemaphore> renderFinishedSemaphores;
-    std::vector<VkFence> inFlightFences;
+    std::array<VkSemaphore,MAX_FRAME_IN_FLIGHT> imageAvailableSemaphores;
+    std::array<VkSemaphore,MAX_FRAME_IN_FLIGHT> renderFinishedSemaphores;
+    std::array<VkFence,MAX_FRAME_IN_FLIGHT> inFlightFences;
 };
 
 class MyBackend: public VulkanBackend{
@@ -112,10 +112,11 @@ class MyBackend: public VulkanBackend{
 public:
     VulkanResourceManager resourceManager;
 
+    //global pipeline
     VulkanPipeline shadowPipeline;
 
     VulkanCommandPool commandPool;
-    std::vector<VulkanCommandPool>  gui_commandPools{};
+    std::array<VulkanCommandPool,MAX_FRAME_IN_FLIGHT>  gui_commandPools{};
 
     std::vector<VkCommandBuffer> commandBuffers{};
     std::vector<VkCommandBuffer> gui_commandBuffers{};
@@ -129,10 +130,11 @@ public:
 
     VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
 
-    std::vector<VkDescriptorSet> descriptorSets;
-    std::vector<VkDescriptorSet> shadowDescriptorSets;
     VulkanDescriptorPool descriptorPool;
     VulkanDescriptorPool imguiDescriptorPool;
+
+    std::vector<VkDescriptorSet> descriptorSets;
+    std::vector<VkDescriptorSet> shadowDescriptorSets;
 
     std::shared_ptr<Mesh> mesh = std::make_shared<Mesh>();
     MeshRender meshRender;

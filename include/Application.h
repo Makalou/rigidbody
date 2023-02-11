@@ -40,7 +40,6 @@ private:
 	void mainloop();
 	void cleanup();
     void updateGUI();
-    void renderGUI(VkCommandBuffer commandBuffer,uint32_t index);
 	void drawFrame();
 
 	std::unique_ptr<scene::SceneGraph> scene;

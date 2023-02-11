@@ -48,9 +48,6 @@ void VulkanBackend::cleanup() {
 }
 
 void VulkanBackend::createSyncObjects() {
-    imageAvailableSemaphores.resize(MAX_FRAME_IN_FLIGHT);
-    renderFinishedSemaphores.resize(MAX_FRAME_IN_FLIGHT);
-    inFlightFences.resize(MAX_FRAME_IN_FLIGHT);
 
     VkSemaphoreCreateInfo semaphoreInfo = {
             .sType =  VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO
@@ -62,10 +59,14 @@ void VulkanBackend::createSyncObjects() {
     };
 
     for (size_t i = 0; i < MAX_FRAME_IN_FLIGHT; i++) {
-        if (vkCreateSemaphore(vkb_device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS ||
-            vkCreateSemaphore(vkb_device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
-            vkCreateFence(vkb_device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create syncobject!");
+        if (vkCreateSemaphore(vkb_device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]) != VK_SUCCESS){
+            throw std::runtime_error("failed to create image available semaphore!");
+        }
+        if(vkCreateSemaphore(vkb_device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ){
+            throw std::runtime_error("failed to create render finished semaphore!");
+        }
+        if(vkCreateFence(vkb_device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS){
+            throw std::runtime_error("failed to create in flight fence!");
         }
     }
 }

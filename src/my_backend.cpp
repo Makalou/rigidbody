@@ -17,11 +17,11 @@ void MyBackend::init_resource() {
 
     commandPool = commandPoolBuilder.setQueue(vkb::QueueType::graphics).build().value();
     commandPoolBuilder.setFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
-    commandBuffers=commandPool.allocateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY,vkb_swapchain.image_count);
+    commandBuffers = commandPool.allocateCommandBuffers(VK_COMMAND_BUFFER_LEVEL_PRIMARY,vkb_swapchain.image_count);
 
     for(int i=0;i<vkb_swapchain.image_count;++i){
         auto pool = commandPoolBuilder.build().value();
-        gui_commandPools.push_back(pool);
+        gui_commandPools[i] = pool;
     }
 
     for(int i=0;i<vkb_swapchain.image_count;++i){

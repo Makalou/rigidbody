@@ -5,7 +5,6 @@
 #include "imgui_impl_glfw.h"
 #include "implot.h"
 #include <queue>
-#include "glm/gtc/quaternion.hpp"
 
 float lastFrame = 0.0f;
 

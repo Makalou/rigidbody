@@ -80,6 +80,7 @@ namespace subsystem {
         //present queue -> consumer
         //swapchain -> mailbox
         vkResetFences(gpu_backend->vkb_device, 1, &gpu_backend->inFlightFences[currentFrame]);
+
         if (vkQueueSubmit(gpu_backend->vkb_device.get_queue(vkb::QueueType::graphics).value(), 1, &submitInfo,
                           gpu_backend->inFlightFences[currentFrame]) != VK_SUCCESS) {
             throw std::runtime_error("failed to submit draw command buffer!");

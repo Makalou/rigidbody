@@ -95,6 +95,8 @@ class MyBackend: public VulkanBackend{
 
     void updateDescriptorSets(uint32_t count);
 
+    void recordCommandBuffer(int idx);
+
     void recordCommandBuffers();
 
     void recordShadowPass(VkCommandBuffer commandBuffer,uint32_t des_idx);

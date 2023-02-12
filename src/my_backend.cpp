@@ -10,8 +10,6 @@
 #include "vk_renderpass.h"
 #include "material.h"
 
-const auto topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
 void MyBackend::init_resource() {
     CommandPoolBuilder commandPoolBuilder{vkb_device};
 
@@ -188,7 +186,7 @@ void MyBackend::init_resource() {
     shadowDescriptorSetLayout = des_set_layout_ret.value();
 
     DescriptorPoolBuilder poolBuilder{vkb_device};
-    auto count = vkb_swapchain.image_count;
+    auto count = 10*vkb_swapchain.image_count;
     poolBuilder.setMaxSets(2*count)
     .setPoolsizes({{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*count},{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2*count}});
     descriptorPool = poolBuilder.build().value();
@@ -214,6 +212,7 @@ void MyBackend::init_resource() {
     {
             PipelineBuilder pipelineBuilder{vkb_device};
         {
+            auto topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             pipelineBuilder.setShader(VK_SHADER_STAGE_VERTEX_BIT, "../res/shader/shadow.vert.spv")
                     .setVertexInputState().setInputAssemblyState(topology).setDepthStencilState()
                     .setViewportState(VkExtent2D{.width = 2 * vkb_swapchain.extent.width, .height = 2 *
@@ -227,6 +226,7 @@ void MyBackend::init_resource() {
             shadowPipeline = pipeline_ret.value();
         }
         {
+            auto topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             pipelineBuilder.reset()
                     .setVertexInputState().setInputAssemblyState(topology).setDepthStencilState()
                     .setViewportState(vkb_swapchain.extent).setRasterizationState()
@@ -430,25 +430,29 @@ void MyBackend::createImGuiPass() {
     imGuiPass = builder.addAttachment(attachment).addSubpass(subpass).addDenpendency(dependency).build().value();
 }
 
+void MyBackend::recordCommandBuffer(int idx) {
+    auto commandBuffer = commandBuffers[idx];
+    VkCommandBufferBeginInfo beginInfo = {
+            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+            .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT
+    };
+
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
+        throw std::runtime_error("failed to begin recording command buffer!");
+    }
+
+    recordShadowPass(commandBuffer,idx);
+    recordForwardPass(commandBuffer,idx);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
+        throw std::runtime_error("failed to record command buffer!");
+    }
+}
+
 void MyBackend::recordCommandBuffers() {
-    auto commandBufferCount = commandBuffers.size();
-    for (size_t i = 0; i < commandBufferCount; i++) {
-        auto commandBuffer = commandBuffers[i];
-        VkCommandBufferBeginInfo beginInfo = {
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                .flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT
-        };
-
-        if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-            throw std::runtime_error("failed to begin recording command buffer!");
-        }
-
-        recordShadowPass(commandBuffer,i);
-        recordForwardPass(commandBuffer,i);
-
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-            throw std::runtime_error("failed to record command buffer!");
-        }
+    for (size_t i = 0; i < commandBuffers.size(); i++) {
+        //auto commandBuffer = commandBuffers[i];
+        recordCommandBuffer(i);
     }
 }
 

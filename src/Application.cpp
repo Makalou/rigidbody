@@ -36,12 +36,12 @@ void Application::mainloop() {
         lastFrame = currentFrame;
         if(!physics_sim_paused) {
             physics_system->update(deltaTime);
-            gpu_backend->mesh->upload_vertex_data_to_device(VulkanDevice{gpu_backend->vkb_device});
+            gpu_backend->mesh->upload_vertex_data_to_device(VulkanDevice{gpu_backend->main_device});
         }
         updateGUI();
         drawFrame();
     }
-    vkDeviceWaitIdle(gpu_backend->vkb_device);
+    vkDeviceWaitIdle(gpu_backend->main_device);
 }
 
 void Application::cleanup() {
@@ -70,10 +70,10 @@ void Application::init_gui() {
     ImGui_ImplGlfw_InitForVulkan(window_system->get_window(), true);
     ImGui_ImplVulkan_InitInfo init_info = {
             .Instance = gpu_backend->vkb_inst,//gpu_backend->vk_instance_wrapper.get_vk_instance(),
-            .PhysicalDevice = gpu_backend->vkb_device.physical_device,
+            .PhysicalDevice = gpu_backend->main_device.physical_device,
             .Device = gpu_backend->getDevice(),
             //todo .quefamily
-            .Queue = gpu_backend->vkb_device.get_queue(vkb::QueueType::graphics).value(),
+            .Queue = gpu_backend->main_device.get_queue(vkb::QueueType::graphics).value(),
             .PipelineCache = VK_NULL_HANDLE,
             .DescriptorPool = gpu_backend->imguiDescriptorPool.m_pool,
             .MinImageCount = static_cast<uint32_t>(gpu_backend->vkb_swapchain.image_count),
@@ -150,7 +150,7 @@ void Application::updateGUI() {
 void Application::init_physics_system() {
     physics_system = std::make_unique<subsystem::PhysicsSystem>();
     physics_system->init(gpu_backend->mesh);
-    gpu_backend->mesh->upload_vertex_data_to_device(VulkanDevice{gpu_backend->vkb_device});
+    gpu_backend->mesh->upload_vertex_data_to_device(VulkanDevice{gpu_backend->main_device});
 }
 
 void Application::init_scene() {

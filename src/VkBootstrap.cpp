@@ -359,7 +359,7 @@ struct QueueErrorCategory : std::error_category {
 const QueueErrorCategory queue_error_category;
 
 struct DeviceErrorCategory : std::error_category {
-	const char* name() const noexcept override { return "vkb_device"; }
+	const char* name() const noexcept override { return "main_device"; }
 	std::string message(int err) const override { return to_string(static_cast<DeviceError>(err)); }
 };
 const DeviceErrorCategory device_error_category;

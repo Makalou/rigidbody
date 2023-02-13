@@ -11,7 +11,7 @@
 #include "material.h"
 
 void MyBackend::init_resource() {
-    CommandPoolBuilder commandPoolBuilder{vkb_device};
+    CommandPoolBuilder commandPoolBuilder{main_device};
 
     commandPool = commandPoolBuilder.setQueue(vkb::QueueType::graphics).build().value();
     commandPoolBuilder.setFlags(VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -27,10 +27,10 @@ void MyBackend::init_resource() {
         gui_commandBuffers.push_back(cb);
     }
 
-    VulkanCommandManager::instance().setDevice(vkb_device);
+    VulkanCommandManager::instance().setDevice(main_device);
 
-    meshRender.setDevice(vkb_device);
-    quadRender.setDevice(vkb_device);
+    meshRender.setDevice(main_device);
+    quadRender.setDevice(main_device);
 
     std::thread resource_thread([&]{
         std::thread loadmodelthread([&]{
@@ -153,7 +153,7 @@ void MyBackend::init_resource() {
             quadRender.prepareMaterialResource();
         });
 
-        resourceManager.setDevice(vkb_device);
+        resourceManager.setDevice(main_device);
         resourceManager.createColorResources(vkb_swapchain.image_format, vkb_swapchain.extent.width,vkb_swapchain.extent.height, msaaSamples);
         resourceManager.createDepthResources(vkb_swapchain.extent.width, vkb_swapchain.extent.height, msaaSamples);
         resourceManager.createShadowMapResource(2 * vkb_swapchain.extent.width, 2 * vkb_swapchain.extent.height);
@@ -163,7 +163,7 @@ void MyBackend::init_resource() {
         meshRender.prepareMeshResource();
         quadRender.prepareMeshResource();
 
-        mesh->upload_vertex_data_to_device(VulkanDevice{vkb_device});
+        mesh->upload_vertex_data_to_device(VulkanDevice{main_device});
         createtextureimgthread.join();
     });
 
@@ -171,7 +171,7 @@ void MyBackend::init_resource() {
     createShadowPass();
     createImGuiPass();
 
-    DescriptorSetLayoutBuilder descriptorSetLayoutBuilder{vkb_device};
+    DescriptorSetLayoutBuilder descriptorSetLayoutBuilder{main_device};
     auto des_set_layout_ret = descriptorSetLayoutBuilder
             .addBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,VK_SHADER_STAGE_VERTEX_BIT)
             .addBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT)
@@ -185,7 +185,7 @@ void MyBackend::init_resource() {
     if(!des_set_layout_ret) std::cerr << "Failed to create shadow descriptorSetLayout" << "\n";
     shadowDescriptorSetLayout = des_set_layout_ret.value();
 
-    DescriptorPoolBuilder poolBuilder{vkb_device};
+    DescriptorPoolBuilder poolBuilder{main_device};
     auto count = 10*vkb_swapchain.image_count;
     poolBuilder.setMaxSets(2*count)
     .setPoolsizes({{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,3*count},{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2*count}});
@@ -210,7 +210,7 @@ void MyBackend::init_resource() {
     resource_thread.join();
 
     {
-            PipelineBuilder pipelineBuilder{vkb_device};
+            PipelineBuilder pipelineBuilder{main_device};
         {
             auto topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             pipelineBuilder.setShader(VK_SHADER_STAGE_VERTEX_BIT, "../res/shader/shadow.vert.spv")
@@ -293,7 +293,7 @@ void MyBackend::updateDescriptorSets(uint32_t count) {
         cameraInfo.buffer = resourceManager.getCameraBuffers()[i];
         descriptorWrites[0].dstSet=descriptorWrites[1].dstSet=descriptorWrites[2].dstSet=descriptorSets[i];
         descriptorWrites[3].dstSet = shadowDescriptorSets[i];
-        vkUpdateDescriptorSets(vkb_device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0,
+        vkUpdateDescriptorSets(main_device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0,
                                nullptr);
     }
 }
@@ -311,7 +311,7 @@ void MyBackend::createForwardPass() {
     };
 
     VkAttachmentDescription depthAttachment = {
-            .format = findDepthFormat(vkb_device.physical_device),
+            .format = findDepthFormat(main_device.physical_device),
             .samples = msaaSamples,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -362,14 +362,14 @@ void MyBackend::createForwardPass() {
             .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
             .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
     };
-    auto builder = RenderPassBuilder{vkb_device};
+    auto builder = RenderPassBuilder{main_device};
     forwardPass = builder.addAttachment(colorAttachment).addAttachment(depthAttachment).addAttachment(colorAttachmentResolve)
     .addSubpass(subpass).addDenpendency(dependency).build().value();
 }
 
 void MyBackend::createShadowPass() {
     VkAttachmentDescription attachment = {
-            .format = findDepthFormat(vkb_device.physical_device),
+            .format = findDepthFormat(main_device.physical_device),
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -391,7 +391,7 @@ void MyBackend::createShadowPass() {
             .pDepthStencilAttachment = &depth_ref
     };
 
-    auto builder = RenderPassBuilder{vkb_device};
+    auto builder = RenderPassBuilder{main_device};
     shadowPass = builder.addAttachment(attachment).addSubpass(subpass).build().value();
 }
 
@@ -426,7 +426,7 @@ void MyBackend::createImGuiPass() {
             .srcAccessMask = 0,
             .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
     };
-    auto builder = RenderPassBuilder{vkb_device};
+    auto builder = RenderPassBuilder{main_device};
     imGuiPass = builder.addAttachment(attachment).addSubpass(subpass).addDenpendency(dependency).build().value();
 }
 
@@ -451,7 +451,6 @@ void MyBackend::recordCommandBuffer(int idx) {
 
 void MyBackend::recordCommandBuffers() {
     for (size_t i = 0; i < commandBuffers.size(); i++) {
-        //auto commandBuffer = commandBuffers[i];
         recordCommandBuffer(i);
     }
 }
@@ -502,7 +501,7 @@ void MyBackend::cleanupSwapChain() {
         gui_commandPools[i].destroy();
     }
 
-    shadowPipeline.destroy(vkb_device);
+    shadowPipeline.destroy(main_device);
     destroyDeviceObject(vkDestroyRenderPass, forwardPass);
     destroyDeviceObject(vkDestroyRenderPass, imGuiPass);
 
@@ -522,7 +521,7 @@ void MyBackend::recreateSwapChain() {
         glfwWaitEvents();
     }
 
-    vkDeviceWaitIdle(vkb_device);
+    vkDeviceWaitIdle(main_device);
 
     cleanupSwapChain();
     createForwardPass();

@@ -32,21 +32,21 @@ public:
     }
 
     auto getDevice() const{
-        return vkb_device;
+        return main_device;
     }
 
     void createSyncObjects();
 
     template<typename Func, typename ... Args>
     void destroyDeviceObject(Func f, Args... args){
-        f(vkb_device,args..., nullptr);
+        f(main_device, args..., nullptr);
     }
 
 public:
     GLFWwindow *window;
 
     vkb::Instance vkb_inst;
-    vkb::Device vkb_device;
+    vkb::Device main_device;
     VkSurfaceKHR surface;
     vkb::Swapchain vkb_swapchain;
 

@@ -143,8 +143,10 @@ struct Mesh {
     void free_from_device(const VulkanDevice& device){
         vkDestroyBuffer(device, m_device_obj.m_vertexBuffer, nullptr);
         vkFreeMemory(device, m_device_obj.m_vertexMemory, nullptr);
-        vkDestroyBuffer(device, m_device_obj.m_indexBuffer, nullptr);
-        vkFreeMemory(device, m_device_obj.m_indexMemory, nullptr);
+        if(m_device_obj.m_indexBuffer!=VK_NULL_HANDLE){
+            vkDestroyBuffer(device, m_device_obj.m_indexBuffer, nullptr);
+            vkFreeMemory(device, m_device_obj.m_indexMemory, nullptr);
+        }
     }
 
     std::vector<uint32_t> indies;
@@ -152,10 +154,10 @@ struct Mesh {
     std::vector<vertexPositionView> position_views = {};
 
     struct DeviceObject{
-        VkDeviceMemory m_vertexMemory;
-        VkDeviceMemory m_indexMemory;
-        VkBuffer m_vertexBuffer;
-        VkBuffer m_indexBuffer;
+        VkDeviceMemory m_vertexMemory{VK_NULL_HANDLE};
+        VkDeviceMemory m_indexMemory{VK_NULL_HANDLE};
+        VkBuffer m_vertexBuffer{VK_NULL_HANDLE};
+        VkBuffer m_indexBuffer{VK_NULL_HANDLE};
     }m_device_obj;
 
     /*

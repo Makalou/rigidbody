@@ -31,10 +31,10 @@ namespace subsystem {
     }
 
     void RenderSystem::drawFrame(int currentFrame, bool *frameBufferResized, bool rota) {
-        vkWaitForFences(gpu_backend->vkb_device, 1, &gpu_backend->inFlightFences[currentFrame], VK_TRUE,
+        vkWaitForFences(gpu_backend->main_device, 1, &gpu_backend->inFlightFences[currentFrame], VK_TRUE,
                         std::numeric_limits<uint64_t>::max());
         uint32_t imageIndex;
-        auto acquire_result = vkAcquireNextImageKHR(gpu_backend->vkb_device, gpu_backend->get_swapChain(),
+        auto acquire_result = vkAcquireNextImageKHR(gpu_backend->main_device, gpu_backend->get_swapChain(),
                                                     std::numeric_limits<uint64_t>::max(),
                                                     gpu_backend->imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE,
                                                     &imageIndex);
@@ -79,9 +79,9 @@ namespace subsystem {
         //render queue -> producer
         //present queue -> consumer
         //swapchain -> mailbox
-        vkResetFences(gpu_backend->vkb_device, 1, &gpu_backend->inFlightFences[currentFrame]);
+        vkResetFences(gpu_backend->main_device, 1, &gpu_backend->inFlightFences[currentFrame]);
 
-        if (vkQueueSubmit(gpu_backend->vkb_device.get_queue(vkb::QueueType::graphics).value(), 1, &submitInfo,
+        if (vkQueueSubmit(gpu_backend->main_device.get_queue(vkb::QueueType::graphics).value(), 1, &submitInfo,
                           gpu_backend->inFlightFences[currentFrame]) != VK_SUCCESS) {
             throw std::runtime_error("failed to submit draw command buffer!");
         }
@@ -96,7 +96,7 @@ namespace subsystem {
                 .pImageIndices = &imageIndex
         };
 
-        auto qp_result = vkQueuePresentKHR(gpu_backend->vkb_device.get_queue(vkb::QueueType::present).value(), &presentInfo);
+        auto qp_result = vkQueuePresentKHR(gpu_backend->main_device.get_queue(vkb::QueueType::present).value(), &presentInfo);
         if (qp_result == VK_ERROR_OUT_OF_DATE_KHR || qp_result == VK_SUBOPTIMAL_KHR || *frameBufferResized) {
             *frameBufferResized = false;
             gpu_backend->recreateSwapChain();

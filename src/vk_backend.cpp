@@ -52,7 +52,7 @@ void VulkanBackend::init(GLFWwindow *window) {
     vkb::DeviceBuilder device_builder{main_phys_device};
     auto dev_ret = device_builder.custom_queue_setup(main_device_custom_queue_descriptions).build();
     if (!dev_ret) std::cerr << "Failed to create main Vulkan device. Error: " << dev_ret.error().message() << "\n";
-    main_device = dev_ret.value();
+    main_device = VulkanDevice(dev_ret.value());
 
     vkb::SwapchainBuilder swapchain_builder{main_device,surface};
     auto swap_ret = swapchain_builder.set_old_swapchain(VK_NULL_HANDLE).set_desired_min_image_count(MAX_FRAME_IN_FLIGHT).build();
@@ -74,7 +74,7 @@ void VulkanBackend::cleanup() {
     clean_resource();
 
     destroy_surface(vkb_inst,surface);
-    destroy_device(main_device);
+    main_device.destroy();
     destroy_instance(vkb_inst);
 }
 

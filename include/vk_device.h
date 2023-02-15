@@ -76,6 +76,18 @@ public:
         vkUpdateDescriptorSets(m_device,writes.size(),writes.data(),0,VK_NULL_HANDLE);
     }
 
+    void destroy(){
+        vkDestroyDevice(m_device, nullptr);
+    }
+
+    VkPhysicalDevice getPhysicalDevice()const {
+        return m_device.physical_device;
+    }
+
+    auto get_queue(vkb::QueueType queueType) const{
+        return m_device.get_queue(queueType);
+    }
+
 private:
     vkb::Device m_device;
 };

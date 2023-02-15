@@ -29,10 +29,8 @@ void MyBackend::init_resource() {
 
     VulkanCommandManager::instance().setDevice(main_device);
 
-    meshRender.setDevice(main_device);
-    quadRender.setDevice(main_device);
-
-
+    meshRender.setDevice(&main_device);
+    quadRender.setDevice(&main_device);
 
     std::thread resource_thread([&]{
         std::thread loadmodelthread([&]{
@@ -314,7 +312,7 @@ void MyBackend::createForwardPass() {
     };
 
     VkAttachmentDescription depthAttachment = {
-            .format = findDepthFormat(main_device.physical_device),
+            .format = findDepthFormat(main_device.getPhysicalDevice()),
             .samples = msaaSamples,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -372,7 +370,7 @@ void MyBackend::createForwardPass() {
 
 void MyBackend::createShadowPass() {
     VkAttachmentDescription attachment = {
-            .format = findDepthFormat(main_device.physical_device),
+            .format = findDepthFormat(main_device.getPhysicalDevice()),
             .samples = VK_SAMPLE_COUNT_1_BIT,
             .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
             .storeOp = VK_ATTACHMENT_STORE_OP_STORE,

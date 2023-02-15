@@ -18,21 +18,19 @@ public:
         SHADOWS_ONLY
     };
 
-    void setDevice(vkb::Device device){
-        m_vulkanDevice.setDevice(device);
+    void setDevice(VulkanDevice* device){
+        m_vulkanDevice = device;
     }
 
     void record_drawCommand(VkCommandBuffer commandBuffer);
 
-    void prepareMeshResource();
+    void prepareMeshResource() const;
 
     void prepareMaterialResource();
 
     void buildPipeline(PipelineBuilder builder,const VkDescriptorSetLayout& global_dscptor_set_layout){
         m_material.buildPipeline(builder, global_dscptor_set_layout);
     }
-
-    void updateDescriptorSets();
 
     void setMesh(const std::shared_ptr<Mesh>& mesh){
         m_mesh = mesh;
@@ -44,7 +42,7 @@ public:
 
     void cleanUp()
     {
-        m_mesh->free_from_device(m_vulkanDevice);
+        m_mesh->free_from_device(*m_vulkanDevice);
         m_material.destroyObj();
     }
 
@@ -52,6 +50,6 @@ public:
     std::shared_ptr<Mesh> m_mesh;
     Material m_material;
     ShadowMode m_shadowMode = ShadowMode::ON;
-    VulkanDevice m_vulkanDevice;
+    VulkanDevice* m_vulkanDevice;
 };
 #endif //RIGIDBODY_MESH_RENDER_H

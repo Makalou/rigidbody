@@ -70,7 +70,7 @@ void Application::init_gui() {
     ImGui_ImplGlfw_InitForVulkan(window_system->get_window(), true);
     ImGui_ImplVulkan_InitInfo init_info = {
             .Instance = gpu_backend->vkb_inst,//gpu_backend->vk_instance_wrapper.get_vk_instance(),
-            .PhysicalDevice = gpu_backend->main_device.physical_device,
+            .PhysicalDevice = gpu_backend->main_device.getPhysicalDevice(),
             .Device = gpu_backend->getDevice(),
             //todo .quefamily
             .Queue = gpu_backend->main_device.get_queue(vkb::QueueType::graphics).value(),

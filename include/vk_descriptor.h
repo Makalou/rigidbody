@@ -22,6 +22,19 @@ public:
             throw std::runtime_error("failed to allocate descriptor sets!");
         }
     }
+
+    void allocateDescriptorSet(const VkDescriptorSetLayout& layouts,VkDescriptorSet& set){
+        VkDescriptorSetAllocateInfo allocInfo = {
+                .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                .descriptorPool = m_pool,
+                .descriptorSetCount = 1,
+                .pSetLayouts = &layouts
+        };
+        if (vkAllocateDescriptorSets(m_device, &allocInfo, &set) != VK_SUCCESS) {
+            throw std::runtime_error("failed to allocate descriptor sets!");
+        }
+    }
+
     VkDescriptorPool m_pool;
     VkDevice m_device;
 };

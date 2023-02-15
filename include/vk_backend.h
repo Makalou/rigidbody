@@ -46,7 +46,8 @@ public:
     GLFWwindow *window;
 
     vkb::Instance vkb_inst;
-    vkb::Device main_device;
+    //vkb::Device main_device;
+    VulkanDevice main_device;
     VkSurfaceKHR surface;
     vkb::Swapchain vkb_swapchain;
 

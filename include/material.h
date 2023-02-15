@@ -28,13 +28,19 @@ class CustomShaderParam{};
 class Material{
 public:
     ShaderProgram m_shader;
+
     std::shared_ptr<CustomShaderParam> m_obj_uniform_buffer;
+
     std::vector<Texture> m_textures;
-    VulkanDescriptorPool m_dscptor_pool;
-    std::vector<VkDescriptorSet> m_dscptor_sets;
+
+    VulkanDescriptorPool m_descriptor_pool;
+    VkDescriptorSet m_descriptor_set;
     VkDescriptorSetLayout m_layout;
+
     VulkanPipeline m_pipeline;
-    VkDevice m_device;
+
+    //VkDevice m_device;
+    VulkanDevice* m_device;
 
     void setCustomUniformBuffer(const std::shared_ptr<CustomShaderParam>& buffer){
         m_obj_uniform_buffer = buffer;
@@ -44,9 +50,22 @@ public:
         m_textures.push_back(tex);
     }
 
-    void init_descriptorPool(const VkDevice& device){
+    void setDevice(VulkanDevice* device){
         m_device = device;
-        DescriptorPoolBuilder builder{device};
+    }
+
+    void prepareResource(){
+        for(auto &tex:m_textures){
+            tex.load();
+            tex.create_device_obj(*m_device);
+            tex.upload_to_device(*m_device);
+            tex.generateMipmaps();
+            tex.free_from_main_memory();
+        }
+    }
+
+    void init_descriptorPool(){
+        DescriptorPoolBuilder builder{*m_device};
         builder.setMaxSets(10);
         if(!m_obj_uniform_buffer&&m_textures.empty()) return;
         if(m_textures.size()==0){
@@ -55,12 +74,12 @@ public:
             builder.setPoolsizes({{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1},
                            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,static_cast<uint32_t>(m_textures.size())}});
         }
-        m_dscptor_pool = builder.build().value();
+        m_descriptor_pool = builder.build().value();
     }
 
     void createDescriptorSetLayout(){
         if(!m_obj_uniform_buffer&& m_textures.empty()) return;
-        DescriptorSetLayoutBuilder descriptorSetLayoutBuilder{m_dscptor_pool.m_device};
+        DescriptorSetLayoutBuilder descriptorSetLayoutBuilder{m_descriptor_pool.m_device};
         if(m_obj_uniform_buffer)
             descriptorSetLayoutBuilder.addBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
         for(int i=0;i<m_textures.size();++i)
@@ -70,7 +89,7 @@ public:
 
     void allocateDescriptorSets(){
         if(m_layout)
-            m_dscptor_pool.allocateDescriptorSets({m_layout},{m_dscptor_sets});
+            m_descriptor_pool.allocateDescriptorSet(m_layout, m_descriptor_set);
     }
 
     void buildPipeline(PipelineBuilder builder,const VkDescriptorSetLayout& global_dscptor_set_layout){
@@ -89,18 +108,45 @@ public:
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
     }
 
+    void updateDescriptorSet(){
+        std::vector<VkDescriptorImageInfo> descriptorImageInfos;
+        descriptorImageInfos.reserve(m_textures.size());
+        for(auto & m_texture : m_textures){
+            descriptorImageInfos.push_back({
+                .sampler = m_texture.m_device_obj.m_sampler,
+                .imageView = m_texture.m_device_obj.m_image_view,
+                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+        }
+
+        std::vector<VkWriteDescriptorSet> descriptorWrites;
+        descriptorWrites.reserve(m_textures.size());
+        for(int i=0; i < m_textures.size(); ++i){
+            descriptorWrites.push_back({
+                .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet = m_descriptor_set,
+                .dstBinding = static_cast<uint32_t>(i),
+                .dstArrayElement = 0,
+                .descriptorCount =1,
+                .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo = &descriptorImageInfos[i],
+                });
+        }
+
+        if(descriptorWrites.empty()) return;
+        m_device->updateDescriptorSets(descriptorWrites);
+    }
+
     void bindDescriptorSet(VkCommandBuffer& commandBuffer){
-        if(m_dscptor_sets.empty()) return;
-        vkCmdBindDescriptorSets(commandBuffer,
-                                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                                m_pipeline.layout, 1, 1,m_dscptor_sets.data(),
+        if(!m_descriptor_set) return;
+        vkCmdBindDescriptorSets(commandBuffer,VK_PIPELINE_BIND_POINT_GRAPHICS,m_pipeline.layout,
+                                1, 1,&m_descriptor_set,
                                 0, nullptr);
     }
 
     void destroyObj(){
         for(auto & tex: m_textures)
-            tex.free_from_device(m_device);
-        m_pipeline.destroy(m_device);
+            tex.free_from_device(*m_device);
+        m_pipeline.destroy(*m_device);
     }
 };
 #endif //RIGIDBODY_MATERIAL_H

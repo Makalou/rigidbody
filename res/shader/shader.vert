@@ -16,10 +16,9 @@ layout(location=3) out vec4 light_sapce_pos;
 void main(){
 	vec4 world_pos = built_in.model*vec4(inPosition,1.0f);
 	light_sapce_pos = built_in.light_sapce_matrix*world_pos;
-	gl_Position = cam.proj*cam.view*world_pos;
+	gl_Position = cam.proj*cam.view*(world_pos+vec4(10.0*sin(gl_InstanceIndex),0.0,0.0,0.0));
 	//gl_Position = vec4(inTexCoord*2-1,0,1);
 	fragPos=vec3(built_in.model*vec4(inPosition,1.0));
 	fragTexCoord = inTexCoord;
 	fragNormal=mat3(transpose(inverse(built_in.model)))*inNormal;
-
 }

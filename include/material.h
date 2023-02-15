@@ -29,7 +29,7 @@ class Material{
 public:
     ShaderProgram m_shader;
 
-    std::shared_ptr<CustomShaderParam> m_obj_uniform_buffer;
+    std::shared_ptr<CustomShaderParam> m_uniform_buffer;
 
     std::vector<Texture> m_textures;
 
@@ -43,7 +43,7 @@ public:
     VulkanDevice* m_device;
 
     void setCustomUniformBuffer(const std::shared_ptr<CustomShaderParam>& buffer){
-        m_obj_uniform_buffer = buffer;
+        m_uniform_buffer = buffer;
     }
 
     void addTexture(const Texture& tex){
@@ -67,7 +67,7 @@ public:
     void init_descriptorPool(){
         DescriptorPoolBuilder builder{*m_device};
         builder.setMaxSets(10);
-        if(!m_obj_uniform_buffer&&m_textures.empty()) return;
+        if(!m_uniform_buffer && m_textures.empty()) return;
         if(m_textures.size()==0){
             builder.setPoolsizes({{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1}});
         }else{
@@ -78,13 +78,13 @@ public:
     }
 
     void createDescriptorSetLayout(){
-        if(!m_obj_uniform_buffer&& m_textures.empty()) return;
-        DescriptorSetLayoutBuilder descriptorSetLayoutBuilder{m_descriptor_pool.m_device};
-        if(m_obj_uniform_buffer)
-            descriptorSetLayoutBuilder.addBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,1,VK_SHADER_STAGE_VERTEX_BIT|VK_SHADER_STAGE_FRAGMENT_BIT);
+        if(!m_uniform_buffer && m_textures.empty()) return;
+        DescriptorSetLayoutBuilder layoutBuilder{*m_device};
+        if(m_uniform_buffer)
+            layoutBuilder.addBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
         for(int i=0;i<m_textures.size();++i)
-            descriptorSetLayoutBuilder.addBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,VK_SHADER_STAGE_FRAGMENT_BIT);
-       m_layout = descriptorSetLayoutBuilder.build().value();
+            layoutBuilder.addBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT);
+       m_layout = layoutBuilder.build().value();
     }
 
     void allocateDescriptorSets(){
@@ -149,4 +149,5 @@ public:
         m_pipeline.destroy(*m_device);
     }
 };
+
 #endif //RIGIDBODY_MATERIAL_H

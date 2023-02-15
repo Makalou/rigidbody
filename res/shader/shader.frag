@@ -97,8 +97,9 @@ void main()
 	vec3 ambient = getIBLAbiment(N,V,F0,metallic,roughness,vec3(0.01),albedo)+specular;
 
 	//Screen Space Ambient Occlusion
-	float ao_factor = 0.0;
 
+	float ao_factor = 0.0;
+	/*
 	vec2 p = gl_FragCoord.xy;
 	float seed = float(baseHash(floatBitsToUint(p)))/float(0xffffffffU);
 
@@ -114,7 +115,7 @@ void main()
 	}
 
 	ao_factor /= 50.0;
-
+	*/
 	vec3 color = (ao_factor)*ambient + Lo + emissive;
 
 	//tone mapping

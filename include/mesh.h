@@ -149,6 +149,18 @@ struct Mesh {
         }
     }
 
+    void draw(VkCommandBuffer cmd,int instanceCount){
+
+    }
+
+    std::pair<glm::vec3,glm::vec3> get_local_aabb() const{
+        return {};
+    }
+
+    std::pair<glm::vec3,float> get_local_bounding_sphere() const{
+        return {};
+    }
+
     std::vector<uint32_t> indies;
     std::vector<Vertex> vertices = {};
     std::vector<vertexPositionView> position_views = {};

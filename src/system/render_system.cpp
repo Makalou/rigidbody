@@ -33,6 +33,7 @@ namespace subsystem {
     void RenderSystem::drawFrame(int currentFrame, bool *frameBufferResized, bool rota) {
         vkWaitForFences(gpu_backend->main_device, 1, &gpu_backend->inFlightFences[currentFrame], VK_TRUE,
                         std::numeric_limits<uint64_t>::max());
+
         uint32_t imageIndex;
         auto acquire_result = vkAcquireNextImageKHR(gpu_backend->main_device, gpu_backend->get_swapChain(),
                                                     std::numeric_limits<uint64_t>::max(),
@@ -52,13 +53,12 @@ namespace subsystem {
         gpu_backend->resourceManager.updateCameraBuffer(imageIndex);//todo should move to other place
         //gpu_backend->resourceManager.updateModelMatrix(imageIndex,aspect,x,q);
 
-
         auto command = gpu_backend->commandBuffers[imageIndex];
         auto gui_command = gpu_backend->gui_commandBuffers[imageIndex];
 
         renderGUI(gui_command, imageIndex);
 
-        VkSemaphore signalSemaphores[] = {gpu_backend->renderFinishedSemaphores[currentFrame]};
+        VkSemaphore renderFinishedSemaphore[] = {gpu_backend->renderFinishedSemaphores[currentFrame]};
 
         VkCommandBuffer commandBuffers[] = {command, gui_command};
 
@@ -73,7 +73,7 @@ namespace subsystem {
                 .commandBufferCount = std::size(commandBuffers),
                 .pCommandBuffers = commandBuffers,
                 .signalSemaphoreCount = 1,
-                .pSignalSemaphores = signalSemaphores
+                .pSignalSemaphores = renderFinishedSemaphore
         };
 
         //render queue -> producer
@@ -90,7 +90,7 @@ namespace subsystem {
         VkPresentInfoKHR presentInfo = {
                 .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                 .waitSemaphoreCount = 1,
-                .pWaitSemaphores = signalSemaphores,
+                .pWaitSemaphores = renderFinishedSemaphore,
                 .swapchainCount = 1,
                 .pSwapchains = swapChains,
                 .pImageIndices = &imageIndex

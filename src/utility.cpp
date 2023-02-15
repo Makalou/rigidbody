@@ -19,7 +19,7 @@ std::vector<char> readFile(const std::string& filename) {
 	return buffer;
 }
 
-void loadModel(Mesh& mesh, const std::string path)
+void loadModelObj(Mesh& mesh, const std::string path)
 {
 
 	tinyobj::attrib_t attrib;//holders all of the positions, normals texture coordinates
@@ -57,4 +57,50 @@ void loadModel(Mesh& mesh, const std::string path)
 	}
 
     mesh.load_vertices(vertices);
+}
+
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "tiny_gltf.h"
+
+void loadModelGLTF(Mesh& mesh, const std::string& path,bool binary = false){
+
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    std::string err;
+    std::string warn;
+
+    bool ret;
+
+    if(binary){
+        ret = loader.LoadBinaryFromFile(&model, &err, &warn,path);
+    }else{
+        ret = loader.LoadASCIIFromFile(&model, &err, &warn,path);
+    }
+
+    if (!warn.empty()) {
+        printf("Warn: %s\n", warn.c_str());
+    }
+
+    if (!err.empty()) {
+        printf("Err: %s\n", err.c_str());
+    }
+
+    if (!ret) {
+        printf("Failed to parse glTF\n");
+    }
+
+    for(const auto& scene : model.scenes){
+        for(const int & root_idx : scene.nodes){
+            auto current_node = model.nodes[root_idx];
+            auto scale = current_node.scale;
+            auto rotation = current_node.rotation;
+            auto translation = current_node.translation;
+            auto mesh = model.meshes[current_node.mesh];
+            for(const auto & primitive : mesh.primitives){
+                auto attributes = primitive.attributes;
+                auto material = model.materials[primitive.material];
+            }
+        }
+    }
 }

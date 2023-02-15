@@ -13,9 +13,7 @@ namespace scene {
 
     struct SceneGraph;
 
-    struct Component{
-
-    };
+    struct Component{};
 
     struct MeshRenderer : Component{
 

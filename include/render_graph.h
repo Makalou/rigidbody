@@ -5,4 +5,11 @@
 #ifndef RIGIDBODY_RENDER_GRAPH_H
 #define RIGIDBODY_RENDER_GRAPH_H
 
+struct RenderGraph{
+
+};
+
+struct RenderGraphBuilder{
+
+};
 #endif //RIGIDBODY_RENDER_GRAPH_H

@@ -72,6 +72,10 @@ public:
         VulkanCommandManager::instance().endandSubmitSingleTimeCommands(commandbuffer);
     }
 
+    void updateDescriptorSets(const std::vector<VkWriteDescriptorSet>& writes){
+        vkUpdateDescriptorSets(m_device,writes.size(),writes.data(),0,VK_NULL_HANDLE);
+    }
+
 private:
     vkb::Device m_device;
 };

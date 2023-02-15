@@ -168,92 +168,6 @@ public:
             throw std::runtime_error("failed to create command pool!");
         }
     }
-    /*
-    void createCommandPools(uint32_t queueFamilyIdx) {
-        VkCommandPoolCreateInfo poolInfo = {
-                .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                .flags = 0,
-                .queueFamilyIndex = queueFamilyIdx,
-        };
-
-        if (vkCreateCommandPool(m_device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create command pool!");
-        }
-    }
-
-    void createGUICommandPools(uint32_t count,uint32_t queueFamilyIdx){
-        gui_commandPools.resize(count);
-        for(auto i = 0;i<count;++i){
-            VkCommandPoolCreateInfo poolInfo = {
-                    .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                    .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-                    .queueFamilyIndex = queueFamilyIdx
-            };
-            if (vkCreateCommandPool(m_device, &poolInfo, nullptr, &gui_commandPools[i]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to create gui command pool!"+std::to_string(i));
-            }
-        }
-    }
-
-    void createCommandBuffers(uint32_t count){
-        commandBuffers.resize(count);//todo why?
-        VkCommandBufferAllocateInfo allocInfo = {
-                .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                .commandPool = commandPool,
-                .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                .commandBufferCount = (uint32_t) commandBuffers.size()
-        };
-
-        if (vkAllocateCommandBuffers(m_device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-            throw std::runtime_error("failed to allocate command buffers!");
-        }
-    }
-
-    void createGUICommandBuffers(uint32_t count){
-        gui_commandBuffers.resize(count);
-        for(auto i = 0;i<count;++i){
-            VkCommandBufferAllocateInfo allocInfo = {
-                    .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                    .commandPool = gui_commandPools[i],
-                    .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                    .commandBufferCount = 1
-            };
-            if (vkAllocateCommandBuffers(m_device, &allocInfo, &gui_commandBuffers[i]) != VK_SUCCESS) {
-                throw std::runtime_error("failed to allocate command buffers!");
-            }
-        }
-    }
-
-    void freeBuffers(){
-        vkFreeCommandBuffers(m_device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-    }
-
-    void freeGuiCommandBuffers(){
-        for(auto i =0;i<gui_commandBuffers.size();++i){
-            vkFreeCommandBuffers(m_device, gui_commandPools[i], 1, &gui_commandBuffers[i]);
-        }
-
-    }
-
-    void destroyAllCommandPools(){
-        vkDestroyCommandPool(m_device,commandPool, nullptr);
-        for(auto i =0;i<gui_commandPools.size();++i) {
-            vkDestroyCommandPool(m_device,gui_commandPools[i], nullptr);
-        }
-    }
-
-    auto getCommandBufferAt(size_t idx){
-        return commandBuffers[idx];
-    }
-
-    auto getGUICommandBufferAt(size_t idx){
-        return gui_commandBuffers[idx];
-    }
-
-    auto getCommandBufferCount() const {
-        return commandBuffers.size();
-    }
-     */
 
     VkCommandBuffer beginSingleTimeCommands() const {
         VkCommandBufferAllocateInfo allocInfo = {
@@ -284,11 +198,11 @@ public:
                 .pCommandBuffers = &commandBuffer
         };
 
-        auto gq = m_device.get_queue(vkb::QueueType::graphics).value();
-        vkQueueSubmit(gq, 1, &submitInfo, VK_NULL_HANDLE);
+        auto queue = m_device.get_queue(vkb::QueueType::graphics).value();
+        vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
 
         std::async([&]{
-            vkQueueWaitIdle(gq);
+            vkQueueWaitIdle(queue);
             vkFreeCommandBuffers(m_device, commandPool, 1, &commandBuffer);
         });
     }

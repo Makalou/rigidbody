@@ -40,24 +40,29 @@ void MeshRender::prepareMaterialResource() {
 }
 
 void MeshRender::updateDescriptorSets() {
-    std::vector<VkWriteDescriptorSet> descriptorWrites;
-    for(int i=0; i < m_material.m_textures.size(); ++i){
-        VkDescriptorImageInfo* pImageInfo= new VkDescriptorImageInfo({.sampler = m_material.m_textures[i].m_device_obj.m_sampler,
-                                                                             .imageView = m_material.m_textures[i].m_device_obj.m_image_view,
-                                                                             .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
-        VkWriteDescriptorSet write{};
-        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write.dstBinding = i;
-        write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        write.dstArrayElement = 0;
-        write.descriptorCount =1;
-        write.pImageInfo = pImageInfo;
-        write.dstSet = m_material.m_dscptor_sets[0];
+    std::vector<VkDescriptorImageInfo> descriptorImageInfos;
+    descriptorImageInfos.reserve(m_material.m_textures.size());
+    for(auto & m_texture : m_material.m_textures){
+        descriptorImageInfos.push_back({
+            .sampler = m_texture.m_device_obj.m_sampler,
+            .imageView = m_texture.m_device_obj.m_image_view,
+            .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL});
+    }
 
-        descriptorWrites.push_back(write);
+    std::vector<VkWriteDescriptorSet> descriptorWrites;
+    descriptorWrites.reserve(m_material.m_textures.size());
+    for(int i=0; i < m_material.m_textures.size(); ++i){
+        descriptorWrites.push_back({
+            .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet = m_material.m_dscptor_sets[0],
+            .dstBinding = static_cast<uint32_t>(i),
+            .dstArrayElement = 0,
+            .descriptorCount =1,
+            .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .pImageInfo = &descriptorImageInfos[i],
+        });
     }
 
     if(descriptorWrites.empty()) return;
-    vkUpdateDescriptorSets(m_vulkanDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0,
-                           nullptr);
+    m_vulkanDevice.updateDescriptorSets(descriptorWrites);
 }

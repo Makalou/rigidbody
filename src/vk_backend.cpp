@@ -35,6 +35,12 @@ void VulkanBackend::init(GLFWwindow *window) {
     // a source and destination queue family index is specified to allow the ownership of a buffer or image to be
     // transferred from one queue family to another.
 
+    // Queue Families with *only* VK_QUEUE_TRANSFER_BIT are usually for using DMA to asynchronously transfer data
+    // between host and device memory on discrete GPUs,
+    // so transfers can be done concurrently with independent graphics/compute operations.
+
+    // VK_QUEUE_GRAPHICS_BIT and VK_QUEUE_COMPUTE_BIT can always implicitly accept VK_QUEUE_TRANSFER_BIT commands.
+
     for(const auto & qf : main_phys_device.get_queue_families()){
         //todo
     }
@@ -48,7 +54,7 @@ void VulkanBackend::init(GLFWwindow *window) {
     if (!dev_ret) std::cerr << "Failed to create main Vulkan device. Error: " << dev_ret.error().message() << "\n";
     main_device = dev_ret.value();
 
-    vkb::SwapchainBuilder swapchain_builder{main_device};
+    vkb::SwapchainBuilder swapchain_builder{main_device,surface};
     auto swap_ret = swapchain_builder.set_old_swapchain(VK_NULL_HANDLE).set_desired_min_image_count(MAX_FRAME_IN_FLIGHT).build();
     if (!swap_ret) std::cerr << "Failed to create Vulkan swapChain. Error: " << swap_ret.error().message() << "\n";
     vkb_swapchain = swap_ret.value();

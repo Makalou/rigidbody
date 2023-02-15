@@ -5,4 +5,8 @@
 #ifndef RIGIDBODY_SCENE_RENDER_H
 #define RIGIDBODY_SCENE_RENDER_H
 
+struct SceneRenderer{
+
+};
+
 #endif //RIGIDBODY_SCENE_RENDER_H

@@ -32,9 +32,11 @@ void MyBackend::init_resource() {
     meshRender.setDevice(main_device);
     quadRender.setDevice(main_device);
 
+
+
     std::thread resource_thread([&]{
         std::thread loadmodelthread([&]{
-            loadModel(*mesh, "../res/model/R2-D2/R2-D2.obj");
+            loadModelObj(*mesh, "../res/model/R2-D2/R2-D2.obj");
             meshRender.setMesh(mesh);
             quadRender.setMesh(quadMesh);
         });
@@ -140,6 +142,7 @@ void MyBackend::init_resource() {
 
         mat.m_shader.vert = "../res/shader/vert.spv";
         mat.m_shader.frag = "../res/shader/frag.spv";
+        //mat.m_shader.frag = "../res/material/single_color/frag.spv";
 
         Material quadMat;
         quadMat.m_shader.vert = "../res/shader/vert.spv";

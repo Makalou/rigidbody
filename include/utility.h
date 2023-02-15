@@ -6,7 +6,9 @@
 
 std::vector<char> readFile(const std::string& filename);
 
-void loadModel(Mesh& mesh, const std::string path);
+void loadModelObj(Mesh& mesh, const std::string path);
+
+void loadModelGLTF(Mesh& mesh, const std::string path);
 
 namespace {
 /*

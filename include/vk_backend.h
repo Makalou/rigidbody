@@ -114,7 +114,7 @@ class MyBackend: public VulkanBackend{
 public:
     VulkanResourceManager resourceManager;
 
-    //global pipeline
+    //global pipelines
     VulkanPipeline shadowPipeline;
 
     VulkanCommandPool commandPool;

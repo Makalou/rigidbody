@@ -14,7 +14,7 @@ void MeshRender::record_drawCommand(VkCommandBuffer commandBuffer) {
     if(m_mesh->indices_buffer_size()>0){
         vkCmdBindIndexBuffer(commandBuffer, m_mesh->m_device_obj.m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
         //In shader glInstanceIdx : [firstInstance,firstInstance + instanceCount]
-        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(m_mesh->get_indices_count()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(m_mesh->get_indices_count()), 1000, 0, 0, 0);
     }
     else{
         vkCmdDraw(commandBuffer,m_mesh->get_vertex_size(),1,0,0);
